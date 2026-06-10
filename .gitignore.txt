@@ -1,0 +1,17 @@
+# Entornos virtuales y Python
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+.env
+
+# Node y React
+node_modules/
+build/
+dist/
+.npm/
+
+# Docker y SO
+.DS_Store
+Thumbs.db
