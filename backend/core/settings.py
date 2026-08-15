@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-vtkjr*1a-@c=o!!k8xtg29011_la^=vwdogxm%9o3!c&c52$(q
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -82,7 +82,6 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
 import os
-import dj_database_url 
 
 DATABASES = {
     'default': {
@@ -94,14 +93,6 @@ DATABASES = {
         'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
-
-# Si Render provee DATABASE_URL, se configura automáticamente
-if os.environ.get('DATABASE_URL'):
-    DATABASES['default'] = dj_database_url.config(
-        default=os.environ.get('DATABASE_URL'),
-        conn_max_age=600,
-        ssl_require=True
-    )
 
 
 # Password validation
@@ -152,6 +143,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+
+# Permitir que el frontend en Render se comunique con este backend
+CORS_ALLOW_ALL_ORIGINS = True
 
 from datetime import timedelta
 
