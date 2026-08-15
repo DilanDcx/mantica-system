@@ -81,16 +81,27 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+import os
+import dj_database_url 
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'mantica_berio',
-        'USER': 'admin',
-        'PASSWORD': 'adminpassword',
-        'HOST': 'db',  # El nombre del servicio en docker-compose
-        'PORT': '5432',
+        'NAME': os.environ.get('DB_NAME', 'mantica_berio'),
+        'USER': os.environ.get('DB_USER', 'admin'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'adminpassword'),
+        'HOST': os.environ.get('DB_HOST', 'db'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
+
+# Si Render provee DATABASE_URL, se configura automáticamente
+if os.environ.get('DATABASE_URL'):
+    DATABASES['default'] = dj_database_url.config(
+        default=os.environ.get('DATABASE_URL'),
+        conn_max_age=600,
+        ssl_require=True
+    )
 
 
 # Password validation
