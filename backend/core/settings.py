@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-vtkjr*1a-@c=o!!k8xtg29011_la^=vwdogxm%9o3!c&c52$(q
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -81,14 +81,16 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
+import os
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'mantica_berio',
-        'USER': 'admin',
-        'PASSWORD': 'adminpassword',
-        'HOST': 'db',  # El nombre del servicio en docker-compose
-        'PORT': '5432',
+        'NAME': os.environ.get('DB_NAME', 'mantica_berio'),
+        'USER': os.environ.get('DB_USER', 'admin'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'adminpassword'),
+        'HOST': os.environ.get('DB_HOST', 'db'),
+        'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
 
@@ -141,6 +143,9 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+
+# Permitir que el frontend en Render se comunique con este backend
+CORS_ALLOW_ALL_ORIGINS = True
 
 from datetime import timedelta
 
