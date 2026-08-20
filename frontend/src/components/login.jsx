@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { User, Lock, Activity } from 'lucide-react';
+import axiosClient from '../api/axiosClient';
+import { Link } from 'react-router-dom';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -19,34 +21,34 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Petición real al endpoint de Django REST Framework
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-      const response = await fetch(`${API_BASE_URL}/api/auth/login/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          username: username.trim(),
-          password: password,
-        }),
+      // Petición al endpoint mediante la instancia centralizada de Axios
+      const response = await axiosClient.post('/api/auth/login/', {
+        username: username.trim(),
+        password: password,
       });
 
-      const data = await response.json();
+      const { access, refresh } = response.data;
 
-      if (response.ok) {
-        // Guardar tokens JWT en LocalStorage / Sesión
-        localStorage.setItem('access_token', data.access);
-        localStorage.setItem('refresh_token', data.refresh);
+      // Guardar tokens JWT en LocalStorage
+      localStorage.setItem('access_token', access);
+      localStorage.setItem('refresh_token', refresh);
 
-        alert(`¡Bienvenido ${username}! Inicio de sesión exitoso.`);
-        // Aquí se redirigirá al Dashboard en el siguiente paso
-      } else {
-        setErrorMsg(data.detail || 'Credenciales inválidas. Verifique sus datos.');
-      }
+      alert(`¡Bienvenido ${username}! Inicio de sesión exitoso.`);
+      // Redirección hacia el Dashboard
     } catch (error) {
       console.error('Error en login:', error);
-      setErrorMsg('No se pudo conectar con el servidor backend.');
+
+      if (error.response) {
+        // Respuesta con código de error HTTP (400, 401, etc.)
+        const errorDetail =
+          error.response.data?.detail ||
+          error.response.data?.message ||
+          'Credenciales inválidas. Verifique sus datos.';
+        setErrorMsg(errorDetail);
+      } else {
+        // Error de conexión o servidor no disponible
+        setErrorMsg('No se pudo conectar con el servidor backend.');
+      }
     } finally {
       setLoading(false);
     }
@@ -108,6 +110,16 @@ export default function Login() {
               />
             </div>
           </div>
+
+          <div className="flex justify-end -mt-2">
+            <Link
+              to="/forgot-password"
+              className="text-xs font-semibold text-[#0F3E48] hover:text-[#20C4BA] transition-colors"
+            >
+              ¿Olvidó su contraseña?
+            </Link>
+          </div>
+          
 
           <button
             type="submit"
