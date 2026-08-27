@@ -6,7 +6,7 @@ from datetime import timedelta
 from django.contrib.auth.hashers import make_password, check_password
 from django.contrib.auth.password_validation import validate_password
 
-from .models import User
+from .models import User, Role
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -140,3 +140,64 @@ class ChangePasswordSerializer(serializers.Serializer):
         user.set_password(self.validated_data['new_password'])
         user.save()
         return user
+
+
+class UserSerializer(serializers.ModelSerializer):
+    """Serializer para el CRUD de usuarios sin requerir email."""
+    password = serializers.CharField(write_only=True, required=False)
+    role_name = serializers.CharField(source='role.name', read_only=True)
+    role_display = serializers.CharField(source='role.get_name_display', read_only=True)
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'username', 'first_name', 'last_name', 'email',
+            'role', 'role_name', 'role_display', 'is_active', 
+            'last_login', 'created_at', 'password', 
+            'security_question_1', 'security_answer_1',
+            'security_question_2', 'security_answer_2',
+            'security_question_3', 'security_answer_3'
+        ]
+        extra_kwargs = {
+            'email': {'required': False, 'allow_blank': True},
+            'security_answer_1': {'write_only': True, 'required': False},
+            'security_answer_2': {'write_only': True, 'required': False},
+            'security_answer_3': {'write_only': True, 'required': False},
+        }
+
+    def create(self, validated_data):
+        password = validated_data.pop('password', None)
+        
+        # Generar correo interno automático para cumplir con el esquema relacional
+        if not validated_data.get('email'):
+            uname = validated_data.get('username', 'usr').strip().lower()
+            validated_data['email'] = f"{uname}@mantica.local"
+
+        for i in range(1, 4):
+            ans_key = f'security_answer_{i}'
+            if ans_key in validated_data and validated_data[ans_key]:
+                validated_data[ans_key] = make_password(validated_data[ans_key].strip().lower())
+
+        user = User(**validated_data)
+        if password:
+            user.set_password(password)
+        else:
+            user.set_unusable_password()
+        user.save()
+        return user
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        
+        for i in range(1, 4):
+            ans_key = f'security_answer_{i}'
+            if ans_key in validated_data and validated_data[ans_key]:
+                validated_data[ans_key] = make_password(validated_data[ans_key].strip().lower())
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance

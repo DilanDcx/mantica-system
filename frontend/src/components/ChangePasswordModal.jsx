@@ -34,7 +34,7 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
     setLoading(true);
 
     try {
-      await axiosClient.post('/api/auth/change-password/', {
+      await axiosClient.post('/auth/change-password/', {
         current_password: currentPassword,
         new_password: newPassword,
       });

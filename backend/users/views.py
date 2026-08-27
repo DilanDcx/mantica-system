@@ -1,16 +1,25 @@
-from rest_framework import status
+from rest_framework import viewsets, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
 
+from .models import User
+from .permissions import IsAdminUserRole  # Permiso RBAC para Administrador
 from .serializers import (
     CustomTokenObtainPairSerializer,
     LogoutSerializer,
     GetSecurityQuestionsSerializer,
     ResetPasswordWithQuestionsSerializer,
-    ChangePasswordSerializer
+    ChangePasswordSerializer,
+    UserSerializer
 )
+
+class UserViewSet(viewsets.ModelViewSet):
+    """CRUD de usuarios exclusivo para Administradores de TI."""
+    queryset = User.objects.all().order_by('-id')
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated, IsAdminUserRole]
 
 
 class CustomLoginView(TokenObtainPairView):
@@ -28,7 +37,6 @@ class LogoutView(APIView):
 
 
 class GetSecurityQuestionsView(APIView):
-    """Retorna las 3 preguntas asociadas al username."""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -43,7 +51,6 @@ class GetSecurityQuestionsView(APIView):
 
 
 class ResetPasswordWithQuestionsView(APIView):
-    """Verifica respuestas y actualiza la contraseña."""
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -54,7 +61,6 @@ class ResetPasswordWithQuestionsView(APIView):
 
 
 class ChangePasswordView(APIView):
-    """Cambio de contraseña desde el perfil de usuario logueado."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -62,3 +68,5 @@ class ChangePasswordView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response({"detail": "Contraseña actualizada correctamente."}, status=status.HTTP_200_OK)
+    
+    
