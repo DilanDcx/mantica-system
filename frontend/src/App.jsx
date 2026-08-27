@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Login from './components/login';
 import ForgotPassword from './components/ForgotPassword';
-import ResetPassword from './components/ResetPassword';
-import UsersPage from './components/UsersPage'; // Importa la página de prueba
+import UsersPage from './components/UsersPage'; 
+import PatientsPage from './components/PatientsPage';
 
 function App() {
   return (
@@ -10,9 +10,9 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/users" element={<UsersPage />} />
-        <Route path="*" element={<Navigate to="/users" replace />} />
+        <Route path="/patients" element={<PatientsPage />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </BrowserRouter>
   );

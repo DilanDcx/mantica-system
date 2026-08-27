@@ -22,7 +22,7 @@ export default function Login() {
 
     try {
       // Petición al endpoint mediante la instancia centralizada de Axios
-      const response = await axiosClient.post('/api/auth/login/', {
+      const response = await axiosClient.post('/auth/login/', {
         username: username.trim(),
         password: password,
       });
