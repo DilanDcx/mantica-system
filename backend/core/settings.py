@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'corsheaders',
     # Mis apps
     'users',
+    'patients',
 ]
 
 MIDDLEWARE = [
@@ -154,9 +155,11 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
-    'DEFAULT_PERMISSION_CLASSES': (
+    'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
-    ),
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 15,  # Entrega 15 pacientes por página
 }
 
 # Configuración de JWT (Caducidad y comportamientos de seguridad)
