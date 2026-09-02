@@ -1,6 +1,11 @@
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import permissions
+from django.contrib.auth import get_user_model
+from .models import Consultation
 from .models import Patient, MedicalRecord, Consultation
 from .serializers import (
     PatientSerializer,
@@ -8,6 +13,29 @@ from .serializers import (
     ConsultationSerializer
 )
 
+
+User = get_user_model()
+
+class HomeDashboardStatsView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        # 1. Total de consultas médicas registradas
+        total_consultations = Consultation.objects.count()
+
+        # 2. Personal habilitado/activo en el sistema
+        active_staff_count = User.objects.filter(is_active=True).count()
+
+        # 3. Citas pendientes (placeholder mientras se crea el módulo)
+        pending_appointments = 0
+
+        return Response({
+            'consultations_count': total_consultations,
+            'active_staff_count': active_staff_count,
+            'pending_appointments': pending_appointments,
+        })
+        
+        
 class PatientViewSet(viewsets.ModelViewSet):
     queryset = Patient.objects.all().select_related('medical_record').order_by('-created_at')
     serializer_class = PatientSerializer

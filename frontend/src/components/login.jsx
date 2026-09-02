@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { User, Lock, Activity } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export default function Login() {
+const navigate = useNavigate(); 
+
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,7 +23,6 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Petición al endpoint mediante la instancia centralizada de Axios
       const response = await axiosClient.post('/auth/login/', {
         username: username.trim(),
         password: password,
@@ -29,24 +30,39 @@ export default function Login() {
 
       const { access, refresh } = response.data;
 
-      // Guardar tokens JWT en LocalStorage
+      // Limpiar datos previos
+      localStorage.clear();
+
       localStorage.setItem('access_token', access);
       localStorage.setItem('refresh_token', refresh);
+      localStorage.setItem('username', username.trim());
+
+      // Determinar rol: solo será Administrador si el backend lo indica explícitamente o si el username es exactamente 'admin'
+      const backendRole = response.data?.user?.role || response.data?.role;
+      const isExplicitAdmin = 
+        username.trim().toLowerCase() === 'admin' || 
+        (typeof backendRole === 'string' && (backendRole.toLowerCase() === 'admin' || backendRole.toLowerCase() === 'administrador'));
+
+      const finalRole = isExplicitAdmin ? 'Administrador' : (backendRole || 'Personal');
+      localStorage.setItem('user_role', finalRole);
+
+      console.log(`[Login] Usuario: ${username.trim()} | Rol asignado: ${finalRole}`);
 
       alert(`¡Bienvenido ${username}! Inicio de sesión exitoso.`);
-      // Redirección hacia el Dashboard
+
+      // Redirección con bandera interna
+      navigate('/home', { replace: true, state: { fromApp: true } });
+
     } catch (error) {
       console.error('Error en login:', error);
 
       if (error.response) {
-        // Respuesta con código de error HTTP (400, 401, etc.)
         const errorDetail =
           error.response.data?.detail ||
           error.response.data?.message ||
           'Credenciales inválidas. Verifique sus datos.';
         setErrorMsg(errorDetail);
       } else {
-        // Error de conexión o servidor no disponible
         setErrorMsg('No se pudo conectar con el servidor backend.');
       }
     } finally {
