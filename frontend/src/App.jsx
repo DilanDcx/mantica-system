@@ -35,28 +35,30 @@ function StrictInternalRoute({ children, adminOnly = false }) {
   const username = (localStorage.getItem('username') || '').trim();
   const rawRole = (localStorage.getItem('user_role') || '').trim().toUpperCase();
 
-  // 1. Si no hay sesión, al login
+
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  // 2. Detección de entrada manual:
-  // Cuando escribes la URL y das Enter, o abres una nueva pestaña, React Router detecta 'POP'
-  // y performance.getEntriesByType('navigation')[0].type detecta 'navigate' o 'reload'.
-  // Cuando haces clic dentro de la app (Navbar), navType es 'PUSH' o 'REPLACE'.
+
   const perfNav = performance.getEntriesByType('navigation')[0];
   const isDirectUrlEntry = navType === 'POP' && (!perfNav || perfNav.type === 'navigate' || perfNav.type === 'reload');
 
-  // Si no viene con la bandera interna en el estado Y fue entrada directa:
+
   if (!location.state?.fromApp && isDirectUrlEntry) {
     return <Navigate to="/home" replace />;
   }
 
-  // 3. Comprobación de Administrador
   const isDoctor = rawRole === 'DOCTOR' || username.toUpperCase().startsWith('DOC');
-  const isAdmin = !isDoctor && (rawRole === 'ADMIN' || rawRole === 'ADMINISTRADOR' || username.toUpperCase().startsWith('ADM'));
+  const hasOrganizationAccess = !isDoctor && (
+    rawRole === 'ADMIN' ||
+    rawRole === 'ADMINISTRADOR' ||
+    rawRole === 'DIRECTOR' ||
+    username.toUpperCase().startsWith('ADM') ||
+    username.toUpperCase().startsWith('DIR')
+  );
 
-  if (adminOnly && !isAdmin) {
+  if (adminOnly && !hasOrganizationAccess) {
     return <Navigate to="/home" replace />;
   }
 

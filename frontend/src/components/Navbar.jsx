@@ -18,7 +18,13 @@ export default function Navbar() {
   const rawRole = (localStorage.getItem('user_role') || '').trim().toUpperCase();
 
   const isDoctor = rawRole === 'DOCTOR' || username.toUpperCase().startsWith('DOC');
-  const isAdmin = !isDoctor && (rawRole === 'ADMIN' || rawRole === 'ADMINISTRADOR' || username.toUpperCase().startsWith('ADM'));
+  const hasOrganizationAccess = !isDoctor && (
+    rawRole === 'ADMIN' ||
+    rawRole === 'ADMINISTRADOR' ||
+    rawRole === 'DIRECTOR' ||
+    username.toUpperCase().startsWith('ADM') ||
+    username.toUpperCase().startsWith('DIR')
+  );
 
   const handleLogout = () => {
     localStorage.clear();
@@ -32,7 +38,7 @@ export default function Navbar() {
     { label: 'Pacientes', path: '/patients', icon: Users },
   ];
 
-  if (isAdmin) {
+  if (hasOrganizationAccess) {
     navItems.push({ label: 'Organización', path: '/users', icon: UserCheck });
   }
 
