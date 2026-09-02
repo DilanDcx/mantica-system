@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Phone, MapPin, ShieldAlert, CheckCircle2, FileText, Calendar } from 'lucide-react';
+import { X, User, Phone, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 
 export default function PatientModal({ isOpen, onClose, patientToEdit = null, onPatientSaved }) {
@@ -11,11 +11,13 @@ export default function PatientModal({ isOpen, onClose, patientToEdit = null, on
     identification_card: '',
     birth_date: '',
     gender: 'M',
+    blood_type: '', // <-- Agregado
     phone_number: '',
     address: '',
     emergency_contact_name: '',
     emergency_contact_phone: '',
     emergency_contact_relation: '',
+    is_active: true,
   };
 
   const [formData, setFormData] = useState(initialFormState);
@@ -30,11 +32,13 @@ export default function PatientModal({ isOpen, onClose, patientToEdit = null, on
         identification_card: patientToEdit.identification_card || '',
         birth_date: patientToEdit.birth_date || '',
         gender: patientToEdit.gender || 'M',
+        blood_type: patientToEdit.blood_type || '', // <-- Agregado
         phone_number: patientToEdit.phone_number || '',
         address: patientToEdit.address || '',
         emergency_contact_name: patientToEdit.emergency_contact_name || '',
         emergency_contact_phone: patientToEdit.emergency_contact_phone || '',
         emergency_contact_relation: patientToEdit.emergency_contact_relation || '',
+        is_active: patientToEdit.is_active ?? true,
       });
     } else {
       setFormData(initialFormState);
@@ -46,8 +50,11 @@ export default function PatientModal({ isOpen, onClose, patientToEdit = null, on
   if (!isOpen) return null;
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value,
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -71,7 +78,7 @@ export default function PatientModal({ isOpen, onClose, patientToEdit = null, on
       onPatientSaved();
     } catch (err) {
       const data = err.response?.data;
-      let msg = 'Error al registrar el paciente.';
+      let msg = 'Error al procesar la solicitud.';
       if (data) {
         if (data.identification_card) {
           msg = Array.isArray(data.identification_card) ? data.identification_card[0] : data.identification_card;
@@ -100,7 +107,7 @@ export default function PatientModal({ isOpen, onClose, patientToEdit = null, on
               {isEditing ? 'Editar Datos del Paciente' : 'Admisión y Apertura de Expediente'}
             </h2>
             <p className="text-xs text-teal-50 font-medium mt-0.5">
-              {isEditing ? 'Actualice la ficha demográfica' : 'Registro de nuevo paciente y generación automática de expediente digital'}
+              {isEditing ? 'Actualice la ficha demográfica y datos de contacto' : 'Registro de nuevo paciente y apertura automática de expediente'}
             </p>
           </div>
           <button
@@ -112,7 +119,6 @@ export default function PatientModal({ isOpen, onClose, patientToEdit = null, on
           </button>
         </div>
 
-        {/* Mensaje de Error */}
         {error && (
           <div className="mx-6 mt-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-600 text-xs font-semibold flex items-center gap-2">
             <ShieldAlert className="w-4 h-4 shrink-0" />
@@ -120,10 +126,8 @@ export default function PatientModal({ isOpen, onClose, patientToEdit = null, on
           </div>
         )}
 
-        {/* Formulario */}
         <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-5 max-h-[80vh] overflow-y-auto">
           
-          {/* Sección 1: Datos Demográficos */}
           <div>
             <h3 className="text-xs font-bold text-[#20C4BA] uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <User className="w-4 h-4" /> Datos de Identificación
@@ -138,8 +142,7 @@ export default function PatientModal({ isOpen, onClose, patientToEdit = null, on
                   required
                   value={formData.first_name}
                   onChange={handleChange}
-                  placeholder="Ej. María Elena"
-                  className="w-full px-3.5 py-2 bg-[#F0FDFA] border border-[#99F6E4] rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#20C4BA] focus:outline-none transition-all placeholder:text-slate-400"
+                  className="w-full px-3.5 py-2 bg-[#F0FDFA] border border-[#99F6E4] rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#20C4BA] focus:outline-none transition-all"
                 />
               </div>
 
@@ -151,8 +154,7 @@ export default function PatientModal({ isOpen, onClose, patientToEdit = null, on
                   required
                   value={formData.last_name}
                   onChange={handleChange}
-                  placeholder="Ej. González Ruiz"
-                  className="w-full px-3.5 py-2 bg-[#F0FDFA] border border-[#99F6E4] rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#20C4BA] focus:outline-none transition-all placeholder:text-slate-400"
+                  className="w-full px-3.5 py-2 bg-[#F0FDFA] border border-[#99F6E4] rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#20C4BA] focus:outline-none transition-all"
                 />
               </div>
 
@@ -164,12 +166,11 @@ export default function PatientModal({ isOpen, onClose, patientToEdit = null, on
                   required
                   value={formData.identification_card}
                   onChange={handleChange}
-                  placeholder="Ej. 081-150895-0002A"
-                  className="w-full px-3.5 py-2 bg-[#F0FDFA] border border-[#99F6E4] rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#20C4BA] focus:outline-none transition-all placeholder:text-slate-400"
+                  className="w-full px-3.5 py-2 bg-[#F0FDFA] border border-[#99F6E4] rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#20C4BA] focus:outline-none transition-all"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:col-span-2">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold text-slate-700">Nacimiento *</label>
                   <input
@@ -195,6 +196,26 @@ export default function PatientModal({ isOpen, onClose, patientToEdit = null, on
                     <option value="O">Otro</option>
                   </select>
                 </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-700">Tipo de Sangre</label>
+                  <select
+                    name="blood_type"
+                    value={formData.blood_type}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 bg-[#F0FDFA] border border-[#99F6E4] rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#20C4BA] focus:outline-none transition-all"
+                  >
+                    <option value="">No especificado</option>
+                    <option value="O+">O Positivo (O+)</option>
+                    <option value="O-">O Negativo (O-)</option>
+                    <option value="A+">A Positivo (A+)</option>
+                    <option value="A-">A Negativo (A-)</option>
+                    <option value="B+">B Positivo (B+)</option>
+                    <option value="B-">B Negativo (B-)</option>
+                    <option value="AB+">AB Positivo (AB+)</option>
+                    <option value="AB-">AB Negativo (AB-)</option>
+                  </select>
+                </div>
               </div>
 
               <div className="flex flex-col gap-1 sm:col-span-2">
@@ -205,7 +226,7 @@ export default function PatientModal({ isOpen, onClose, patientToEdit = null, on
                   value={formData.phone_number}
                   onChange={handleChange}
                   placeholder="Ej. +505 8888-8888"
-                  className="w-full px-3.5 py-2 bg-[#F0FDFA] border border-[#99F6E4] rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#20C4BA] focus:outline-none transition-all placeholder:text-slate-400"
+                  className="w-full px-3.5 py-2 bg-[#F0FDFA] border border-[#99F6E4] rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#20C4BA] focus:outline-none transition-all"
                 />
               </div>
 
@@ -216,61 +237,53 @@ export default function PatientModal({ isOpen, onClose, patientToEdit = null, on
                   rows={2}
                   value={formData.address}
                   onChange={handleChange}
-                  placeholder="Barrio, número de casa, puntos de referencia..."
-                  className="w-full px-3.5 py-2 bg-[#F0FDFA] border border-[#99F6E4] rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#20C4BA] focus:outline-none transition-all placeholder:text-slate-400 resize-none"
+                  className="w-full px-3.5 py-2 bg-[#F0FDFA] border border-[#99F6E4] rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#20C4BA] focus:outline-none transition-all resize-none"
                 />
               </div>
             </div>
           </div>
 
-          {/* Sección 2: Contacto de Emergencia */}
           <div className="pt-2 border-t border-slate-100">
             <h3 className="text-xs font-bold text-[#20C4BA] uppercase tracking-wider mb-3 flex items-center gap-1.5">
               <Phone className="w-4 h-4" /> Contacto de Emergencia
             </h3>
             
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-              <div className="flex flex-col gap-1 sm:col-span-1">
-                <label className="text-xs font-semibold text-slate-700">Nombre Completo *</label>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-700">Nombre Completo</label>
                 <input
                   type="text"
                   name="emergency_contact_name"
-                  required
                   value={formData.emergency_contact_name}
                   onChange={handleChange}
-                  placeholder="Ej. Carlos González"
-                  className="w-full px-3.5 py-2 bg-[#F0FDFA] border border-[#99F6E4] rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#20C4BA] focus:outline-none transition-all placeholder:text-slate-400"
+                  className="w-full px-3.5 py-2 bg-[#F0FDFA] border border-[#99F6E4] rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#20C4BA] focus:outline-none transition-all"
                 />
               </div>
 
-              <div className="flex flex-col gap-1 sm:col-span-1">
-                <label className="text-xs font-semibold text-slate-700">Teléfono *</label>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold text-slate-700">Teléfono</label>
                 <input
                   type="tel"
                   name="emergency_contact_phone"
-                  required
                   value={formData.emergency_contact_phone}
                   onChange={handleChange}
-                  placeholder="Ej. +505 7777-7777"
-                  className="w-full px-3.5 py-2 bg-[#F0FDFA] border border-[#99F6E4] rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#20C4BA] focus:outline-none transition-all placeholder:text-slate-400"
+                  className="w-full px-3.5 py-2 bg-[#F0FDFA] border border-[#99F6E4] rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#20C4BA] focus:outline-none transition-all"
                 />
               </div>
 
-              <div className="flex flex-col gap-1 sm:col-span-1">
+              <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold text-slate-700">Parentesco</label>
                 <input
                   type="text"
                   name="emergency_contact_relation"
                   value={formData.emergency_contact_relation}
                   onChange={handleChange}
-                  placeholder="Ej. Cónyuge, Padre, Hermano"
-                  className="w-full px-3.5 py-2 bg-[#F0FDFA] border border-[#99F6E4] rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#20C4BA] focus:outline-none transition-all placeholder:text-slate-400"
+                  className="w-full px-3.5 py-2 bg-[#F0FDFA] border border-[#99F6E4] rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#20C4BA] focus:outline-none transition-all"
                 />
               </div>
             </div>
           </div>
 
-          {/* Botones de acción */}
           <div className="flex items-center justify-end gap-3 mt-2 pt-3 border-t border-slate-100">
             <button
               type="button"
@@ -289,7 +302,7 @@ export default function PatientModal({ isOpen, onClose, patientToEdit = null, on
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  {isEditing ? 'Guardar Cambios' : 'Registrar y Abrir Expediente'}
+                  {isEditing ? 'Guardar Cambios' : 'Registrar Paciente'}
                 </>
               )}
             </button>
