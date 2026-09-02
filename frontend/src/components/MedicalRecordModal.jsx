@@ -177,7 +177,9 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
                   <div className="text-[11px] text-slate-400 flex items-center gap-1.5 font-medium">
                     <Heart className="w-3.5 h-3.5 text-[#20C4BA]" /> Tipo de Sangre
                   </div>
-                  <div className="text-xs font-bold text-slate-800 mt-1">O+</div>
+                  <div className="text-xs font-bold text-slate-800 mt-1">
+                    {patient.blood_type || 'No registrado'}
+                  </div>
                 </div>
 
                 <div className="p-3 bg-slate-50 border border-slate-100 rounded-2xl">

@@ -11,6 +11,7 @@ export default function PatientModal({ isOpen, onClose, patientToEdit = null, on
     identification_card: '',
     birth_date: '',
     gender: 'M',
+    blood_type: '', // <-- Agregado
     phone_number: '',
     address: '',
     emergency_contact_name: '',
@@ -31,6 +32,7 @@ export default function PatientModal({ isOpen, onClose, patientToEdit = null, on
         identification_card: patientToEdit.identification_card || '',
         birth_date: patientToEdit.birth_date || '',
         gender: patientToEdit.gender || 'M',
+        blood_type: patientToEdit.blood_type || '', // <-- Agregado
         phone_number: patientToEdit.phone_number || '',
         address: patientToEdit.address || '',
         emergency_contact_name: patientToEdit.emergency_contact_name || '',
@@ -168,7 +170,7 @@ export default function PatientModal({ isOpen, onClose, patientToEdit = null, on
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:col-span-2">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-semibold text-slate-700">Nacimiento *</label>
                   <input
@@ -192,6 +194,26 @@ export default function PatientModal({ isOpen, onClose, patientToEdit = null, on
                     <option value="M">Masculino</option>
                     <option value="F">Femenino</option>
                     <option value="O">Otro</option>
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs font-semibold text-slate-700">Tipo de Sangre</label>
+                  <select
+                    name="blood_type"
+                    value={formData.blood_type}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 bg-[#F0FDFA] border border-[#99F6E4] rounded-xl text-slate-800 text-xs focus:ring-2 focus:ring-[#20C4BA] focus:outline-none transition-all"
+                  >
+                    <option value="">No especificado</option>
+                    <option value="O+">O Positivo (O+)</option>
+                    <option value="O-">O Negativo (O-)</option>
+                    <option value="A+">A Positivo (A+)</option>
+                    <option value="A-">A Negativo (A-)</option>
+                    <option value="B+">B Positivo (B+)</option>
+                    <option value="B-">B Negativo (B-)</option>
+                    <option value="AB+">AB Positivo (AB+)</option>
+                    <option value="AB-">AB Negativo (AB-)</option>
                   </select>
                 </div>
               </div>

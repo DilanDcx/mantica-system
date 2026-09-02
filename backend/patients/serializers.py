@@ -1,6 +1,4 @@
 from rest_framework import serializers
-from rest_framework.validators import UniqueValidator
-from .models import Patient, MedicalRecord
 from .models import Patient, MedicalRecord, Consultation, ClinicalAuditLog
 
 
@@ -23,16 +21,18 @@ class MedicalRecordDetailSerializer(serializers.ModelSerializer):
         fields = ['id', 'record_number', 'opened_at', 'notes', 'patient', 'consultations', 'last_consultation']
 
     def get_patient(self, obj):
+        patient = obj.patient
         return {
-            'id': obj.patient.id,
-            'first_name': obj.patient.first_name,
-            'last_name': obj.patient.last_name,
-            'identification_card': obj.patient.identification_card,
-            'birth_date': obj.patient.birth_date,
-            'gender': obj.patient.gender,
-            'phone_number': obj.patient.phone_number,
-            'address': obj.patient.address,
-            'is_active': obj.patient.is_active,
+            'id': patient.id,
+            'first_name': patient.first_name,
+            'last_name': patient.last_name,
+            'identification_card': patient.identification_card,
+            'birth_date': patient.birth_date,
+            'gender': patient.gender,
+            'blood_type': patient.blood_type,
+            'phone_number': patient.phone_number,
+            'address': patient.address,
+            'is_active': patient.is_active,
         }
 
     def get_last_consultation(self, obj):

@@ -1,7 +1,6 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.postgres.indexes import GinIndex
-from django.contrib.postgres.operations import TrigramExtension
 
 
 class Patient(models.Model):
@@ -9,6 +8,17 @@ class Patient(models.Model):
         ('M', 'Masculino'),
         ('F', 'Femenino'),
         ('O', 'Otro'),
+    ]
+
+    BLOOD_TYPE_CHOICES = [
+        ('O+', 'O Positivo (O+)'),
+        ('O-', 'O Negativo (O-)'),
+        ('A+', 'A Positivo (A+)'),
+        ('A-', 'A Negativo (A-)'),
+        ('B+', 'B Positivo (B+)'),
+        ('B-', 'B Negativo (B-)'),
+        ('AB+', 'AB Positivo (AB+)'),
+        ('AB-', 'AB Negativo (AB-)'),
     ]
 
     first_name = models.CharField(max_length=150, verbose_name='Nombres')
@@ -21,6 +31,13 @@ class Patient(models.Model):
     )
     birth_date = models.DateField(verbose_name='Fecha de Nacimiento')
     gender = models.CharField(max_length=1, choices=GENDER_CHOICES, verbose_name='Género')
+    blood_type = models.CharField(
+        max_length=5,
+        choices=BLOOD_TYPE_CHOICES,
+        blank=True,
+        null=True,
+        verbose_name='Tipo de Sangre'
+    )
     phone_number = models.CharField(max_length=20, blank=True, null=True, db_index=True, verbose_name='Teléfono')
     address = models.TextField(blank=True, null=True, verbose_name='Dirección')
     
@@ -38,7 +55,6 @@ class Patient(models.Model):
         verbose_name_plural = 'Pacientes'
         ordering = ['-created_at']
         indexes = [
-            # Índices GIN con Trigramas para acelerar búsquedas 'icontains' y texto parcial
             GinIndex(name='patient_first_name_trgm_idx', fields=['first_name'], opclasses=['gin_trgm_ops']),
             GinIndex(name='patient_last_name_trgm_idx', fields=['last_name'], opclasses=['gin_trgm_ops']),
         ]
@@ -69,7 +85,8 @@ class MedicalRecord(models.Model):
 
     def __str__(self):
         return f"Expediente {self.record_number} - {self.patient.first_name} {self.patient.last_name}"
-    
+
+
 class Consultation(models.Model):
     medical_record = models.ForeignKey(
         MedicalRecord,
@@ -87,12 +104,10 @@ class Consultation(models.Model):
     )
     consultation_date = models.DateTimeField(auto_now_add=True, verbose_name='Fecha y Hora')
     
-    # Motivo y Examen
     reason = models.TextField(verbose_name='Motivo de Consulta')
     symptoms = models.TextField(blank=True, null=True, verbose_name='Síntomas / Cuadro Clínico')
     physical_examination = models.TextField(blank=True, null=True, verbose_name='Examen Físico')
     
-    # Constantes Vitales
     blood_pressure = models.CharField(max_length=20, blank=True, null=True, verbose_name='Presión Arterial (mmHg)')
     weight_kg = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, verbose_name='Peso (kg)')
     temperature_c = models.DecimalField(max_digits=4, decimal_places=1, blank=True, null=True, verbose_name='Temperatura (°C)')
@@ -100,7 +115,6 @@ class Consultation(models.Model):
     respiratory_rate = models.IntegerField(blank=True, null=True, verbose_name='Frecuencia Respiratoria (rpm)')
     oxygen_saturation = models.DecimalField(max_digits=4, decimal_places=1, blank=True, null=True, verbose_name='Saturación O2 (%)')
 
-    # Diagnóstico y Plan
     diagnosis = models.TextField(verbose_name='Diagnóstico')
     treatment_plan = models.TextField(blank=True, null=True, verbose_name='Plan de Tratamiento / Receta')
     notes = models.TextField(blank=True, null=True, verbose_name='Observaciones Adicionales')
