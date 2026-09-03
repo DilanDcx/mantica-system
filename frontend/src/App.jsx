@@ -6,14 +6,19 @@ import PatientsPage from './components/PatientsPage';
 import MedicalRecordsPage from './components/MedicalRecordsPage';
 import HomePage from './components/HomePage';
 import Navbar from './components/Navbar';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 
 function AppLayout({ children }) {
+  const { isDark } = useTheme();
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className={`min-h-screen flex flex-col transition-colors duration-200 ${
+      isDark ? 'bg-[#0B1320] text-slate-100' : 'bg-slate-50 text-slate-800'
+    }`}>
       <Navbar />
       <div className="flex-1">
         {children}
-      </div>
+      </div>  
     </div>
   );
 }
@@ -29,21 +34,18 @@ function AuthRoute({ children }) {
 
 // 🔒 GUARDIÁN ESTRICTO ANTI-URL MANUAL
 function StrictInternalRoute({ children, adminOnly = false }) {
-  const navType = useNavigationType(); // 'PUSH' o 'REPLACE' cuando se hace clic en la app, 'POP' al escribir en URL o recargar
+  const navType = useNavigationType();
   const location = useLocation();
   const token = localStorage.getItem('access_token');
   const username = (localStorage.getItem('username') || '').trim();
   const rawRole = (localStorage.getItem('user_role') || '').trim().toUpperCase();
 
-
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-
   const perfNav = performance.getEntriesByType('navigation')[0];
   const isDirectUrlEntry = navType === 'POP' && (!perfNav || perfNav.type === 'navigate' || perfNav.type === 'reload');
-
 
   if (!location.state?.fromApp && isDirectUrlEntry) {
     return <Navigate to="/home" replace />;
@@ -65,9 +67,13 @@ function StrictInternalRoute({ children, adminOnly = false }) {
   return children;
 }
 
-function App() {
+function MainRoutes() {
+  const { isDark } = useTheme();
+
   return (
-    <BrowserRouter>
+    <div className={`min-h-screen transition-colors duration-200 ${
+      isDark ? 'bg-[#0B1320] text-slate-100' : 'bg-slate-50 text-slate-800'
+    }`}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -77,7 +83,7 @@ function App() {
           path="/home" 
           element={
             <AuthRoute>
-              <HomePage />
+              <AppLayout><HomePage /></AppLayout>
             </AuthRoute>
           } 
         />
@@ -110,7 +116,17 @@ function App() {
 
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
-    </BrowserRouter>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <BrowserRouter>
+        <MainRoutes />
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 
