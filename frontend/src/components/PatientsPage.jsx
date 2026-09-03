@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Search, UserPlus, FileText, Phone, Edit, RefreshCw, AlertCircle, 
   UserCheck, UserX, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight,
-  ArrowUpDown, ArrowUp, ArrowDown 
+  ArrowUpDown, ArrowUp, ArrowDown, Calendar as CalendarIcon, Filter, X
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import PatientModal from '../components/PatientModal';
@@ -24,17 +24,46 @@ export default function PatientsPage() {
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [activeRecordModal, setActiveRecordModal] = useState(null);
 
+  // Popover de Fechas
+  const [isDateFilterOpen, setIsDateFilterOpen] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
+  // Popover de Filtros Avanzados
+  const [isAdvFilterOpen, setIsAdvFilterOpen] = useState(false);
+  const [filters, setFilters] = useState({
+    gender: '',
+    blood_type: '',
+    min_age: '',
+    max_age: '',
+    min_height: '',
+    max_height: '',
+    min_weight: '',
+    max_weight: '',
+  });
+
   const pageSize = 15;
   const totalPages = Math.ceil(totalCount / pageSize) || 1;
 
-  const fetchPatients = useCallback(async (query = '', page = 1, order = '-created_at') => {
+  const fetchPatients = useCallback(async (page = 1) => {
     setLoading(true);
     setError('');
     try {
       const params = new URLSearchParams();
-      if (query.trim()) params.append('search', query.trim());
+      if (searchTerm.trim()) params.append('search', searchTerm.trim());
       params.append('page', page);
-      if (order) params.append('ordering', order);
+      if (ordering) params.append('ordering', ordering);
+
+      if (startDate) params.append('start_date', startDate);
+      if (endDate) params.append('end_date', endDate);
+      if (filters.gender) params.append('gender', filters.gender);
+      if (filters.blood_type) params.append('blood_type', filters.blood_type);
+      if (filters.min_age) params.append('min_age', filters.min_age);
+      if (filters.max_age) params.append('max_age', filters.max_age);
+      if (filters.min_height) params.append('min_height', filters.min_height);
+      if (filters.max_height) params.append('max_height', filters.max_height);
+      if (filters.min_weight) params.append('min_weight', filters.min_weight);
+      if (filters.max_weight) params.append('max_weight', filters.max_weight);
 
       const res = await axiosClient.get(`/patients/?${params.toString()}`);
       
@@ -54,27 +83,25 @@ export default function PatientsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [searchTerm, ordering, startDate, endDate, filters]);
 
-  // Búsqueda con debounce (reinicia a la página 1)
+  // Debounce para búsqueda y filtros reactivos
   useEffect(() => {
     const handler = setTimeout(() => {
       setCurrentPage(1);
-      fetchPatients(searchTerm, 1, ordering);
+      fetchPatients(1);
     }, 300);
 
     return () => clearTimeout(handler);
-  }, [searchTerm, ordering, fetchPatients]);
+  }, [fetchPatients]);
 
-  // Cambio de página
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages && newPage !== currentPage) {
       setCurrentPage(newPage);
-      fetchPatients(searchTerm, newPage, ordering);
+      fetchPatients(newPage);
     }
   };
 
-  // Manejo de ordenamiento por columna
   const handleSort = (field) => {
     let nextOrder = field;
     if (ordering === field) {
@@ -100,15 +127,25 @@ export default function PatientsPage() {
     );
   };
 
-  const handleKeyDown = async (e) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const currentResults = await fetchPatients(searchTerm, 1, ordering);
-      if (currentResults.length === 1) {
-        handleOpenRecord(currentResults[0]);
-      }
-    }
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setFilters((prev) => ({ ...prev, [name]: value }));
   };
+
+  const clearAdvFilters = () => {
+    setFilters({
+      gender: '',
+      blood_type: '',
+      min_age: '',
+      max_age: '',
+      min_height: '',
+      max_height: '',
+      min_weight: '',
+      max_weight: '',
+    });
+  };
+
+  const hasActiveAdvFilters = Object.values(filters).some((val) => val !== '');
 
   const handleOpenCreate = () => {
     setSelectedPatient(null);
@@ -140,7 +177,7 @@ export default function PatientsPage() {
 
   const handleSaved = () => {
     setIsModalOpen(false);
-    fetchPatients(searchTerm, currentPage, ordering);
+    fetchPatients(currentPage);
   };
 
   return (
@@ -181,15 +218,12 @@ export default function PatientsPage() {
           : 'bg-white border-slate-100'
       }`}>
         <div className="relative flex-1 max-w-lg">
-          <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${
-            isDark ? 'text-slate-400' : 'text-slate-400'
-          }`} />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
             placeholder="Buscar por nombre, cédula, teléfono o expediente..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            onKeyDown={handleKeyDown}
             className={`w-full pl-10 pr-4 py-2 rounded-xl text-xs focus:outline-none transition-all border ${
               isDark 
                 ? 'bg-[#1E293B] border-slate-700 text-slate-100 placeholder:text-slate-400 focus:ring-2 focus:ring-[#2DD4BF]' 
@@ -198,14 +232,257 @@ export default function PatientsPage() {
           />
         </div>
 
-        <div className="flex items-center gap-3">
-          <span className={`text-xs font-semibold hidden sm:inline ${
+        <div className="flex items-center gap-2 sm:gap-3">
+          <span className={`text-xs font-semibold hidden md:inline ${
             isDark ? 'text-slate-400' : 'text-slate-500'
           }`}>
             Total: <strong className={isDark ? 'text-slate-200' : 'text-slate-800'}>{totalCount.toLocaleString()}</strong> registros
           </span>
+
+          {/* 1. Botón de Filtros Clínicos Avanzados */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                setIsAdvFilterOpen((prev) => !prev);
+                setIsDateFilterOpen(false);
+              }}
+              title="Filtros avanzados"
+              className={`p-2.5 rounded-xl border transition-colors cursor-pointer flex items-center gap-1.5 ${
+                hasActiveAdvFilters
+                  ? isDark ? 'bg-teal-950/60 border-teal-500 text-teal-300' : 'bg-teal-50 border-teal-400 text-[#14958D]'
+                  : isDark ? 'text-slate-400 hover:text-teal-400 hover:bg-slate-800 border-slate-700' : 'text-slate-500 hover:text-[#20C4BA] hover:bg-teal-50 border-slate-200'
+              }`}
+            >
+              <Filter className="w-4 h-4" />
+              {hasActiveAdvFilters && <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>}
+            </button>
+
+            {/* Popover Filtros Avanzados */}
+            {isAdvFilterOpen && (
+              <div className={`absolute right-0 top-12 z-30 p-5 rounded-2xl shadow-2xl border w-80 ${
+                isDark ? 'bg-[#0F172A] border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+              }`}>
+                <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-700/40">
+                  <span className="text-xs font-bold flex items-center gap-1.5">
+                    <Filter className="w-3.5 h-3.5 text-teal-400" /> Filtros Avanzados
+                  </span>
+                  <button onClick={() => setIsAdvFilterOpen(false)} className="p-1 text-slate-400 hover:text-slate-200">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                <div className="space-y-3 text-xs">
+                  {/* Género */}
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Género</label>
+                    <select
+                      name="gender"
+                      value={filters.gender}
+                      onChange={handleFilterChange}
+                      className={`w-full px-3 py-1.5 rounded-xl text-xs outline-none border ${
+                        isDark ? 'bg-[#1E293B] border-slate-700 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-800'
+                      }`}
+                    >
+                      <option value="">Todos los géneros</option>
+                      <option value="M">Masculino</option>
+                      <option value="F">Femenino</option>
+                      <option value="O">Otro</option>
+                    </select>
+                  </div>
+
+                  {/* Tipo de Sangre */}
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Tipo de Sangre</label>
+                    <select
+                      name="blood_type"
+                      value={filters.blood_type}
+                      onChange={handleFilterChange}
+                      className={`w-full px-3 py-1.5 rounded-xl text-xs outline-none border ${
+                        isDark ? 'bg-[#1E293B] border-slate-700 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-800'
+                      }`}
+                    >
+                      <option value="">Todos los tipos</option>
+                      <option value="O+">O Positivo (O+)</option>
+                      <option value="O-">O Negativo (O-)</option>
+                      <option value="A+">A Positivo (A+)</option>
+                      <option value="A-">A Negativo (A-)</option>
+                      <option value="B+">B Positivo (B+)</option>
+                      <option value="B-">B Negativo (B-)</option>
+                      <option value="AB+">AB Positivo (AB+)</option>
+                      <option value="AB-">AB Negativo (AB-)</option>
+                    </select>
+                  </div>
+
+                  {/* Rango de Edad */}
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Rango de Edad (Años)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        name="min_age"
+                        placeholder="Mín"
+                        value={filters.min_age}
+                        onChange={handleFilterChange}
+                        className={`w-1/2 px-3 py-1.5 rounded-xl text-xs outline-none border ${
+                          isDark ? 'bg-[#1E293B] border-slate-700 text-slate-100 placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800 placeholder:text-slate-400'
+                        }`}
+                      />
+                      <input
+                        type="number"
+                        name="max_age"
+                        placeholder="Máx"
+                        value={filters.max_age}
+                        onChange={handleFilterChange}
+                        className={`w-1/2 px-3 py-1.5 rounded-xl text-xs outline-none border ${
+                          isDark ? 'bg-[#1E293B] border-slate-700 text-slate-100 placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800 placeholder:text-slate-400'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Rango de Altura */}
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Altura (m, ej. 1.50 - 1.85)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="min_height"
+                        placeholder="Mín (m)"
+                        value={filters.min_height}
+                        onChange={handleFilterChange}
+                        className={`w-1/2 px-3 py-1.5 rounded-xl text-xs outline-none border ${
+                          isDark ? 'bg-[#1E293B] border-slate-700 text-slate-100 placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800 placeholder:text-slate-400'
+                        }`}
+                      />
+                      <input
+                        type="number"
+                        step="0.01"
+                        name="max_height"
+                        placeholder="Máx (m)"
+                        value={filters.max_height}
+                        onChange={handleFilterChange}
+                        className={`w-1/2 px-3 py-1.5 rounded-xl text-xs outline-none border ${
+                          isDark ? 'bg-[#1E293B] border-slate-700 text-slate-100 placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800 placeholder:text-slate-400'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Rango de Peso */}
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Peso (kg, ej. 50 - 90)</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        step="0.1"
+                        name="min_weight"
+                        placeholder="Mín (kg)"
+                        value={filters.min_weight}
+                        onChange={handleFilterChange}
+                        className={`w-1/2 px-3 py-1.5 rounded-xl text-xs outline-none border ${
+                          isDark ? 'bg-[#1E293B] border-slate-700 text-slate-100 placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800 placeholder:text-slate-400'
+                        }`}
+                      />
+                      <input
+                        type="number"
+                        step="0.1"
+                        name="max_weight"
+                        placeholder="Máx (kg)"
+                        value={filters.max_weight}
+                        onChange={handleFilterChange}
+                        className={`w-1/2 px-3 py-1.5 rounded-xl text-xs outline-none border ${
+                          isDark ? 'bg-[#1E293B] border-slate-700 text-slate-100 placeholder:text-slate-500' : 'bg-slate-50 border-slate-200 text-slate-800 placeholder:text-slate-400'
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {hasActiveAdvFilters && (
+                    <button
+                      type="button"
+                      onClick={clearAdvFilters}
+                      className="w-full py-2 text-xs text-rose-400 hover:text-rose-300 font-semibold cursor-pointer text-center"
+                    >
+                      Limpiar filtros avanzados
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 2. Botón de Rango de Fechas */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                setIsDateFilterOpen((prev) => !prev);
+                setIsAdvFilterOpen(false);
+              }}
+              title="Filtrar por fecha de registro"
+              className={`p-2.5 rounded-xl border transition-colors cursor-pointer flex items-center gap-1.5 ${
+                startDate || endDate
+                  ? isDark ? 'bg-teal-950/60 border-teal-500 text-teal-300' : 'bg-teal-50 border-teal-400 text-[#14958D]'
+                  : isDark ? 'text-slate-400 hover:text-teal-400 hover:bg-slate-800 border-slate-700' : 'text-slate-500 hover:text-[#20C4BA] hover:bg-teal-50 border-slate-200'
+              }`}
+            >
+              <CalendarIcon className="w-4 h-4" />
+              {(startDate || endDate) && <span className="w-2 h-2 rounded-full bg-teal-400 animate-pulse"></span>}
+            </button>
+
+            {isDateFilterOpen && (
+              <div className={`absolute right-0 top-12 z-30 p-4 rounded-2xl shadow-xl border w-72 ${
+                isDark ? 'bg-[#0F172A] border-slate-700 text-slate-100' : 'bg-white border-slate-200 text-slate-800'
+              }`}>
+                <div className="flex items-center justify-between pb-2 mb-3 border-b border-slate-700/40">
+                  <span className="text-xs font-bold flex items-center gap-1.5">
+                    <CalendarIcon className="w-3.5 h-3.5 text-teal-400" /> Fecha de Registro
+                  </span>
+                  <button onClick={() => setIsDateFilterOpen(false)} className="p-1 text-slate-400 hover:text-slate-200">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Desde</label>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className={`w-full px-3 py-1.5 rounded-xl text-xs outline-none border ${
+                        isDark ? 'bg-[#1E293B] border-slate-700 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-800'
+                      }`}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] text-slate-400 mb-1">Hasta</label>
+                    <input
+                      type="date"
+                      value={endDate}
+                      onChange={(e) => setEndDate(e.target.value)}
+                      className={`w-full px-3 py-1.5 rounded-xl text-xs outline-none border ${
+                        isDark ? 'bg-[#1E293B] border-slate-700 text-slate-100' : 'bg-slate-50 border-slate-200 text-slate-800'
+                      }`}
+                    />
+                  </div>
+                  {(startDate || endDate) && (
+                    <button
+                      type="button"
+                      onClick={() => { setStartDate(''); setEndDate(''); }}
+                      className="w-full py-1.5 text-xs text-rose-400 hover:text-rose-300 font-semibold cursor-pointer"
+                    >
+                      Limpiar fechas
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           <button
-            onClick={() => fetchPatients(searchTerm, currentPage, ordering)}
+            onClick={() => fetchPatients(currentPage)}
             disabled={loading}
             className={`p-2.5 rounded-xl border transition-colors cursor-pointer ${
               isDark 
@@ -244,7 +521,6 @@ export default function PatientsPage() {
                   ? 'border-slate-800 bg-slate-800/60 text-slate-400' 
                   : 'border-slate-100 bg-slate-50/75 text-slate-500'
               }`}>
-                
                 <th className="py-3.5 px-6">
                   <button 
                     onClick={() => handleSort('first_name')}
@@ -300,7 +576,7 @@ export default function PatientsPage() {
               ) : patients.length === 0 ? (
                 <tr>
                   <td colSpan={6} className={`py-12 text-center ${isDark ? 'text-slate-500' : 'text-slate-400'}`}>
-                    No se encontraron pacientes registrados.
+                    No se encontraron pacientes que coincidan con los criterios de búsqueda y filtros.
                   </td>
                 </tr>
               ) : (
@@ -348,10 +624,10 @@ export default function PatientsPage() {
                           p.is_active
                             ? isDark 
                               ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/60' 
-                              : 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                              : 'bg-emerald-50 text-emerald-600 border-emerald-200'
                             : isDark 
                               ? 'bg-rose-950/60 text-rose-300 border-rose-800/60' 
-                              : 'bg-rose-50 text-rose-600 border border-rose-200'
+                              : 'bg-rose-50 text-rose-600 border-rose-200'
                         }`}
                       >
                         {p.is_active ? 'Activo' : 'Inactivo'}
@@ -480,7 +756,7 @@ export default function PatientsPage() {
         </div>
       </div>
 
-      {/* Modal de Expediente Clínico */}
+      {/* Modal de Expediente Clínico Rápido */}
       {activeRecordModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4">
           <div className={`w-full max-w-lg rounded-2xl p-6 shadow-2xl space-y-4 border transition-colors ${

@@ -3,13 +3,27 @@ from .models import Patient, MedicalRecord, Consultation, ClinicalAuditLog
 
 
 class ConsultationSerializer(serializers.ModelSerializer):
-    doctor_name = serializers.ReadOnlyField(source='doctor.get_full_name')
-    consultation_date_formatted = serializers.DateTimeField(source='consultation_date', format='%d/%m/%Y %H:%M', read_only=True)
+    doctor_name = serializers.SerializerMethodField()
+    consultation_date_formatted = serializers.DateTimeField(
+        source='consultation_date', 
+        format='%d/%m/%Y %H:%M', 
+        read_only=True
+    )
 
     class Meta:
         model = Consultation
         fields = '__all__'
 
+    def get_doctor_name(self, obj):
+        if not obj.doctor:
+            return 'Médico de Turno'
+        
+        full_name = f"{obj.doctor.first_name or ''} {obj.doctor.last_name or ''}".strip()
+        if full_name:
+            return full_name
+        
+        # Fallback al username si no tiene nombres cargados (ej. @ADM-01 o @DOC-01)
+        return f"@{obj.doctor.username}"
 
 class MedicalRecordDetailSerializer(serializers.ModelSerializer):
     consultations = ConsultationSerializer(many=True, read_only=True)

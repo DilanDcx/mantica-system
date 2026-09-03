@@ -4,7 +4,7 @@ from .views import (
     PatientViewSet, 
     MedicalRecordViewSet, 
     ConsultationViewSet, 
-    HomeDashboardStatsView  # <-- Agregado aquí
+    HomeDashboardStatsView
 )
 
 router = DefaultRouter()

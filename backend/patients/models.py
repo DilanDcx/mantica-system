@@ -110,6 +110,7 @@ class Consultation(models.Model):
     
     blood_pressure = models.CharField(max_length=20, blank=True, null=True, verbose_name='Presión Arterial (mmHg)')
     weight_kg = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True, verbose_name='Peso (kg)')
+    height_m = models.DecimalField(max_digits=4, decimal_places=2, blank=True, null=True, verbose_name='Altura (m)')
     temperature_c = models.DecimalField(max_digits=4, decimal_places=1, blank=True, null=True, verbose_name='Temperatura (°C)')
     heart_rate_bpm = models.IntegerField(blank=True, null=True, verbose_name='Frecuencia Cardíaca (lpm)')
     respiratory_rate = models.IntegerField(blank=True, null=True, verbose_name='Frecuencia Respiratoria (rpm)')

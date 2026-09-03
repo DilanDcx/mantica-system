@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, User, Calendar, Activity, Phone, MapPin, Heart, 
   Thermometer, PlusCircle, CheckCircle2, ShieldAlert, History
@@ -9,6 +9,7 @@ import { useTheme } from '../context/ThemeContext';
 export default function MedicalRecordModal({ isOpen, onClose, record, onConsultationSaved }) {
   const { isDark } = useTheme();
 
+  const [currentRecord, setCurrentRecord] = useState(record);
   const [activeTab, setActiveTab] = useState('info'); // 'info' | 'history' | 'new_consultation'
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,6 +20,7 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
     physical_examination: '',
     blood_pressure: '',
     weight_kg: '',
+    height_m: '',
     temperature_c: '',
     heart_rate_bpm: '',
     respiratory_rate: '',
@@ -28,11 +30,15 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
     notes: '',
   });
 
-  if (!isOpen || !record) return null;
+  useEffect(() => {
+    setCurrentRecord(record);
+  }, [record]);
 
-  const patient = record.patient || {};
-  const lastConsultation = record.last_consultation;
-  const consultations = record.consultations || [];
+  if (!isOpen || !currentRecord) return null;
+
+  const patient = currentRecord.patient || {};
+  const lastConsultation = currentRecord.last_consultation;
+  const consultations = currentRecord.consultations || [];
 
   const calculateAge = (birthDate) => {
     if (!birthDate) return 'N/A';
@@ -56,12 +62,13 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
 
     try {
       const payload = {
-        medical_record: record.id,
+        medical_record: currentRecord.id,
         reason: formData.reason,
         symptoms: formData.symptoms,
         physical_examination: formData.physical_examination,
         blood_pressure: formData.blood_pressure || null,
         weight_kg: formData.weight_kg ? parseFloat(formData.weight_kg) : null,
+        height_m: formData.height_m ? parseFloat(formData.height_m) : null,
         temperature_c: formData.temperature_c ? parseFloat(formData.temperature_c) : null,
         heart_rate_bpm: formData.heart_rate_bpm ? parseInt(formData.heart_rate_bpm, 10) : null,
         respiratory_rate: formData.respiratory_rate ? parseInt(formData.respiratory_rate, 10) : null,
@@ -72,7 +79,27 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
       };
 
       await axiosClient.post('/consultations/', payload);
-      setActiveTab('info');
+
+      const res = await axiosClient.get(`/medical-records/${currentRecord.id}/`);
+      setCurrentRecord(res.data);
+
+      setFormData({
+        reason: '',
+        symptoms: '',
+        physical_examination: '',
+        blood_pressure: '',
+        weight_kg: '',
+        height_m: '',
+        temperature_c: '',
+        heart_rate_bpm: '',
+        respiratory_rate: '',
+        oxygen_saturation: '',
+        diagnosis: '',
+        treatment_plan: '',
+        notes: '',
+      });
+
+      setActiveTab('history');
       if (onConsultationSaved) onConsultationSaved();
     } catch (err) {
       setError('Error al registrar la consulta. Verifique los campos obligatorios.');
@@ -109,7 +136,7 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
                 <span className={`text-xs font-mono px-2 py-0.5 rounded-md ${
                   isDark ? 'bg-slate-800 text-teal-300' : 'bg-teal-800/20 text-white'
                 }`}>
-                  {record.record_number} - {patient.identification_card}
+                  {currentRecord.record_number} - {patient.identification_card}
                 </span>
                 <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-md ${
                   isDark ? 'bg-slate-800 text-slate-300' : 'bg-white/20 text-white'
@@ -261,11 +288,11 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
                   </span>
                 </h4>
 
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
                   <div className={`p-3 rounded-2xl text-center border transition-colors ${
                     isDark ? 'bg-teal-950/40 border-teal-900/60' : 'bg-teal-50/50 border-teal-100'
                   }`}>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase">Presión Arterial</div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase">Presión Art.</div>
                     <div className={`text-xs font-black mt-1 ${isDark ? 'text-teal-300' : 'text-[#14958D]'}`}>
                       {lastConsultation?.blood_pressure || '--/-- mmHg'}
                     </div>
@@ -277,6 +304,15 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
                     <div className="text-[10px] font-bold text-slate-400 uppercase">Peso</div>
                     <div className={`text-xs font-black mt-1 ${isDark ? 'text-teal-300' : 'text-[#14958D]'}`}>
                       {lastConsultation?.weight_kg ? `${lastConsultation.weight_kg} kg` : '-- kg'}
+                    </div>
+                  </div>
+
+                  <div className={`p-3 rounded-2xl text-center border transition-colors ${
+                    isDark ? 'bg-teal-950/40 border-teal-900/60' : 'bg-teal-50/50 border-teal-100'
+                  }`}>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase">Altura</div>
+                    <div className={`text-xs font-black mt-1 ${isDark ? 'text-teal-300' : 'text-[#14958D]'}`}>
+                      {lastConsultation?.height_m ? `${lastConsultation.height_m} m` : '-- m'}
                     </div>
                   </div>
 
@@ -326,8 +362,20 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
                       <span className={`font-bold ${isDark ? 'text-teal-400' : 'text-[#20C4BA]'}`}>
                         {c.consultation_date_formatted}
                       </span>
-                      <span className="text-slate-400">Atendido por: {c.doctor_name || 'Médico de Turno'}</span>
+                      <span className="text-slate-400">
+                        Atendido por: <strong className={isDark ? 'text-slate-200' : 'text-slate-700'}>{c.doctor_name || 'Médico de Turno'}</strong>
+                      </span>
                     </div>
+
+                    {/* Fila de Signos Vitales Resumida de la Consulta */}
+                    <div className={`flex flex-wrap gap-2 text-[11px] pt-1 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+                      {c.blood_pressure && <span className="px-2 py-0.5 rounded bg-slate-800/40 border border-slate-700/50">PA: {c.blood_pressure}</span>}
+                      {c.weight_kg && <span className="px-2 py-0.5 rounded bg-slate-800/40 border border-slate-700/50">Peso: {c.weight_kg} kg</span>}
+                      {c.height_m && <span className="px-2 py-0.5 rounded bg-slate-800/40 border border-slate-700/50">Altura: {c.height_m} m</span>}
+                      {c.temperature_c && <span className="px-2 py-0.5 rounded bg-slate-800/40 border border-slate-700/50">Temp: {c.temperature_c} °C</span>}
+                      {c.heart_rate_bpm && <span className="px-2 py-0.5 rounded bg-slate-800/40 border border-slate-700/50">FC: {c.heart_rate_bpm} lpm</span>}
+                    </div>
+
                     <div className={`text-xs ${isDark ? 'text-slate-200' : 'text-slate-700'}`}>
                       <strong>Motivo:</strong> {c.reason}
                     </div>
@@ -357,18 +405,18 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
                 </div>
               )}
 
-              {/* Constantes Vitales */}
+              {/* Constantes Vitales con Altura (m) */}
               <div>
                 <h4 className={`text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5 ${
                   isDark ? 'text-teal-400' : 'text-[#20C4BA]'
                 }`}>
                   <Thermometer className="w-4 h-4" /> Constantes y Signos Vitales
                 </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
                   <input
                     type="text"
                     name="blood_pressure"
-                    placeholder="P.A. (ej. 120/80)"
+                    placeholder="P.A. (120/80)"
                     value={formData.blood_pressure}
                     onChange={handleInputChange}
                     className={`px-3 py-2 rounded-xl text-xs focus:outline-none border ${
@@ -392,6 +440,19 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
                   />
                   <input
                     type="number"
+                    step="0.01"
+                    name="height_m"
+                    placeholder="Altura (m, ej 1.70)"
+                    value={formData.height_m}
+                    onChange={handleInputChange}
+                    className={`px-3 py-2 rounded-xl text-xs focus:outline-none border ${
+                      isDark 
+                        ? 'bg-[#1E293B] border-slate-700 text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-teal-400' 
+                        : 'bg-slate-50 border-slate-200 text-slate-800 focus:ring-2 focus:ring-[#20C4BA]'
+                    }`}
+                  />
+                  <input
+                    type="number"
                     step="0.1"
                     name="temperature_c"
                     placeholder="Temp (°C)"
@@ -406,7 +467,7 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
                   <input
                     type="number"
                     name="heart_rate_bpm"
-                    placeholder="Frec. Cardíaca (lpm)"
+                    placeholder="Frec. Card. (lpm)"
                     value={formData.heart_rate_bpm}
                     onChange={handleInputChange}
                     className={`px-3 py-2 rounded-xl text-xs focus:outline-none border ${
