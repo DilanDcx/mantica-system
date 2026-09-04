@@ -1,6 +1,8 @@
 from django.db import models
 from django.conf import settings
 from django.contrib.postgres.indexes import GinIndex
+import os
+from django.core.validators import FileExtensionValidator
 
 
 class Patient(models.Model):
@@ -75,6 +77,25 @@ class MedicalRecord(models.Model):
         unique=True,
         db_index=True,
         verbose_name='Número de Expediente'
+    )
+    
+    allergies = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Alergias Conocidas',
+        help_text='Alergias a medicamentos, alimentos u otras sustancias'
+    )
+    medical_background = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Antecedentes Médicos / Patológicos',
+        help_text='Enfermedades crónicas, cirugías previas, etc.'
+    )
+    family_background = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name='Antecedentes Heredofamiliares',
+        help_text='Antecedentes de diabetes, hipertensión o cáncer familiar'
     )
     opened_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de Apertura')
     notes = models.TextField(blank=True, null=True, verbose_name='Notas Iniciales')
@@ -159,3 +180,35 @@ class ClinicalAuditLog(models.Model):
 
     def __str__(self):
         return f"[{self.action}] Exp: {self.record_number} por {self.performed_by} ({self.timestamp.strftime('%d/%m/%Y %H:%M')})"
+    
+
+def consultation_attachment_path(instance, filename):
+    return f"medical_records/{instance.consultation.medical_record.record_number}/consultations/{instance.consultation.id}/{filename}"
+
+class MedicalAttachment(models.Model):
+    consultation = models.ForeignKey(
+        Consultation,
+        on_delete=models.CASCADE,
+        related_name='attachments',
+        verbose_name='Consulta'
+    )
+    file = models.FileField(
+        upload_to=consultation_attachment_path,
+        validators=[FileExtensionValidator(allowed_extensions=['pdf', 'png', 'jpg', 'jpeg'])],
+        verbose_name='Archivo'
+    )
+    title = models.CharField(max_length=150, verbose_name='Título / Descripción del Estudio')
+    uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name='Fecha de Subida')
+
+    class Meta:
+        verbose_name = 'Estudio / Documento Adjunto'
+        verbose_name_plural = 'Estudios / Documentos Adjuntos'
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return f"{self.title} ({self.consultation.medical_record.record_number})"
+
+    @property
+    def file_extension(self):
+        name, ext = os.path.splitext(self.file.name)
+        return ext.lower().replace('.', '')

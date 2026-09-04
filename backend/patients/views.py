@@ -1,33 +1,29 @@
+from datetime import date
+from django.db.models import Q
+from django.contrib.auth import get_user_model
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import permissions
-from datetime import date
-from django.db.models import Q
-from django.contrib.auth import get_user_model
 from .models import Patient, MedicalRecord, Consultation, ClinicalAuditLog
 from .serializers import (
     PatientSerializer,
     MedicalRecordDetailSerializer,
     ConsultationSerializer
 )
-
+from rest_framework.parsers import MultiPartParser, FormParser
+from .models import MedicalAttachment
+from .serializers import MedicalAttachmentSerializer
 
 User = get_user_model()
+
 
 class HomeDashboardStatsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        # 1. Total de consultas médicas registradas
         total_consultations = Consultation.objects.count()
-
-        # 2. Personal habilitado/activo en el sistema
         active_staff_count = User.objects.filter(is_active=True).count()
-
-        # 3. Citas pendientes (placeholder mientras se crea el módulo)
         pending_appointments = 0
 
         return Response({
@@ -35,8 +31,8 @@ class HomeDashboardStatsView(APIView):
             'active_staff_count': active_staff_count,
             'pending_appointments': pending_appointments,
         })
-        
-        
+
+
 class PatientViewSet(viewsets.ModelViewSet):
     serializer_class = PatientSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -151,20 +147,18 @@ class MedicalRecordViewSet(viewsets.ReadOnlyModelViewSet):
                 Q(consultations__consultation_date__date__lte=end_date) | Q(opened_at__date__lte=end_date)
             ).distinct()
 
-        # 4. Filtro por Rango de Edad (calculado sobre birth_date)
+        # 4. Filtro por Rango de Edad
         min_age = params.get('min_age')
         max_age = params.get('max_age')
         today = date.today()
         if max_age and max_age.isdigit():
-            # Paciente debe haber nacido después de: hoy - (max_age + 1) años
             min_birth = today.replace(year=today.year - int(max_age) - 1)
             queryset = queryset.filter(patient__birth_date__gt=min_birth)
         if min_age and min_age.isdigit():
-            # Paciente debe haber nacido antes de: hoy - min_age años
             max_birth = today.replace(year=today.year - int(min_age))
             queryset = queryset.filter(patient__birth_date__lte=max_birth)
 
-        # 5. Filtro por Altura en metros (sobre las atenciones registradas)
+        # 5. Filtro por Altura en metros
         min_height = params.get('min_height')
         max_height = params.get('max_height')
         if min_height:
@@ -172,7 +166,7 @@ class MedicalRecordViewSet(viewsets.ReadOnlyModelViewSet):
         if max_height:
             queryset = queryset.filter(consultations__height_m__lte=float(max_height)).distinct()
 
-        # 6. Filtro por Peso en kg (sobre las atenciones registradas)
+        # 6. Filtro por Peso en kg
         min_weight = params.get('min_weight')
         max_weight = params.get('max_weight')
         if min_weight:
@@ -188,6 +182,53 @@ class MedicalRecordViewSet(viewsets.ReadOnlyModelViewSet):
 
         return queryset
 
+    @action(detail=True, methods=['patch'], url_path='update-clinical-alerts')
+    def update_clinical_alerts(self, request, pk=None):
+        """
+        TSK-HU09.2.1: Actualiza alergias y antecedentes del expediente clínico.
+        """
+        record = self.get_object()
+
+        if 'allergies' in request.data:
+            record.allergies = request.data.get('allergies')
+        if 'medical_background' in request.data:
+            record.medical_background = request.data.get('medical_background')
+        if 'family_background' in request.data:
+            record.family_background = request.data.get('family_background')
+
+        record.save(update_fields=['allergies', 'medical_background', 'family_background'])
+        
+        # Registrar auditoría del cambio
+        user = request.user if request.user.is_authenticated else None
+        performed_by = user.username if user else 'SISTEMA'
+        
+        ClinicalAuditLog.objects.create(
+            consultation=None,
+            record_number=record.record_number,
+            action='UPDATE',
+            performed_by=performed_by,
+            details={
+                'action_detail': 'Actualización de alergias y antecedentes clínicos',
+                'allergies': record.allergies,
+                'medical_background': record.medical_background,
+                'family_background': record.family_background
+            }
+        )
+
+        serializer = self.get_serializer(record)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    @action(detail=True, methods=['get'], url_path='history')
+    def history(self, request, pk=None):
+        """
+        TSK-HU10.1: Retorna el historial médico cronológico completo de atenciones.
+        """
+        record = self.get_object()
+        consultations = record.consultations.select_related('doctor').order_by('-consultation_date')
+        serializer = ConsultationSerializer(consultations, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    
 class ConsultationViewSet(viewsets.ModelViewSet):
     queryset = Consultation.objects.all().select_related('medical_record', 'doctor')
     serializer_class = ConsultationSerializer
@@ -197,7 +238,6 @@ class ConsultationViewSet(viewsets.ModelViewSet):
         user = self.request.user if self.request.user.is_authenticated else None
         consultation = serializer.save(doctor=user)
         
-        # Auditoría clínica sin bloqueos de rol
         doctor_username = user.username if user else 'ADM-01'
         doctor_id = user.id if user else None
 
@@ -231,3 +271,19 @@ class ConsultationViewSet(viewsets.ModelViewSet):
                 'treatment_plan': consultation.treatment_plan,
             }
         )
+        
+class MedicalAttachmentViewSet(viewsets.ModelViewSet):
+    queryset = MedicalAttachment.objects.all().select_related('consultation__medical_record')
+    serializer_class = MedicalAttachmentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def create(self, request, *args, **kwargs):
+        # Validar tamaño máximo opcional (ej: 10MB)
+        file_obj = request.FILES.get('file')
+        if file_obj and file_obj.size > 10 * 1024 * 1024:
+            return Response(
+                {'detail': 'El archivo excede el límite máximo permitido de 10 MB.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        return super().create(request, *args, **kwargs)
