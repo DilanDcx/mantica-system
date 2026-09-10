@@ -4,6 +4,7 @@ import ForgotPassword from './components/ForgotPassword';
 import UsersPage from './components/UsersPage';
 import PatientsPage from './components/PatientsPage';
 import MedicalRecordsPage from './components/MedicalRecordsPage';
+import AppointmentsPage from './components/AppointmentsPage';
 import HomePage from './components/HomePage';
 import Navbar from './components/Navbar';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
@@ -102,6 +103,15 @@ function MainRoutes() {
           element={
             <StrictInternalRoute>
               <AppLayout><PatientsPage /></AppLayout>
+            </StrictInternalRoute>
+          } 
+        />
+        {/* NUEVA RUTA: MÓDULO DE CITAS MÉDICAS (HU-12.1) */}
+        <Route 
+          path="/appointments" 
+          element={
+            <StrictInternalRoute>
+              <AppLayout><AppointmentsPage /></AppLayout>
             </StrictInternalRoute>
           } 
         />

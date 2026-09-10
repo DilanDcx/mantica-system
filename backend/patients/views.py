@@ -14,6 +14,10 @@ from .serializers import (
 from rest_framework.parsers import MultiPartParser, FormParser
 from .models import MedicalAttachment
 from .serializers import MedicalAttachmentSerializer
+from .models import Appointment
+from .serializers import AppointmentSerializer
+from django.core.exceptions import ValidationError
+from django.db import transaction
 
 User = get_user_model()
 
@@ -287,3 +291,149 @@ class MedicalAttachmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         return super().create(request, *args, **kwargs)
+    
+class AppointmentViewSet(viewsets.ModelViewSet):
+    queryset = Appointment.objects.all().select_related('patient', 'doctor').order_by('scheduled_at')
+    serializer_class = AppointmentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        doctor_id = self.request.query_params.get('doctor')
+        date_str = self.request.query_params.get('date')
+
+        if doctor_id:
+            queryset = queryset.filter(doctor_id=doctor_id)
+        if date_str:
+            queryset = queryset.filter(scheduled_at__date=date_str)
+
+        return queryset
+
+    @action(detail=False, methods=['get'], url_path='doctors-list')
+    def get_doctors(self, request):
+        """Devuelve la lista de usuarios médicos para el selector del frontend"""
+        doctors = User.objects.filter(role__name='DOCTOR', is_active=True).values('id', 'first_name', 'last_name', 'username')
+        return Response(list(doctors), status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['post'], url_path='cancel')
+    def cancel_appointment(self, request, pk=None):
+        """TSK-HU12.2.1: Cancela una cita y libera el bloque en la agenda"""
+        appointment = self.get_object()
+        
+        if appointment.status == 'CANCELLED':
+            return Response(
+                {'detail': 'La cita médica ya se encuentra cancelada.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        appointment.status = 'CANCELLED'
+        appointment.save(update_fields=['status', 'updated_at'])
+        
+        return Response(
+            {'detail': 'Cita cancelada correctamente. El bloque horario ha sido liberado.'},
+            status=status.HTTP_200_OK
+        )
+
+    @action(detail=True, methods=['patch', 'post'], url_path='reschedule')
+    def reschedule_appointment(self, request, pk=None):
+        """TSK-HU12.2.1: Modifica fecha, hora o duración validando colisiones"""
+        appointment = self.get_object()
+        
+        if appointment.status == 'CANCELLED':
+            return Response(
+                {'detail': 'No se puede reprogramar una cita cancelada.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        new_scheduled_at = request.data.get('scheduled_at')
+        new_duration = request.data.get('duration_minutes', appointment.duration_minutes)
+
+        if not new_scheduled_at:
+            return Response(
+                {'scheduled_at': 'Debe proporcionar la nueva fecha y hora.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        appointment.scheduled_at = new_scheduled_at
+        appointment.duration_minutes = int(new_duration)
+
+        try:
+            appointment.clean()
+            appointment.save(update_fields=['scheduled_at', 'duration_minutes', 'updated_at'])
+        except ValidationError as e:
+            return Response(e.message_dict, status=status.HTTP_400_BAD_REQUEST)
+
+        serializer = self.get_serializer(appointment)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['post'], url_path='mark-arrived')
+    def mark_arrived(self, request, pk=None):
+        """TSK-HU13.1: Marca la presencia del paciente en sala de espera"""
+        appointment = self.get_object()
+
+        if appointment.status == 'CANCELLED':
+            return Response(
+                {'detail': 'No se puede registrar asistencia en una cita cancelada.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        appointment.status = 'WAITING'
+        appointment.save(update_fields=['status', 'updated_at'])
+
+        return Response(
+            {'detail': 'Llegada confirmada. Paciente marcado en sala de espera.', 'status': appointment.status},
+            status=status.HTTP_200_OK
+        )
+        
+    @action(detail=True, methods=['post'], url_path='complete')
+    def complete_appointment(self, request, pk=None):
+        """Marca una cita médica como Completada"""
+        appointment = self.get_object()
+
+        if appointment.status == 'CANCELLED':
+            return Response(
+                {'detail': 'No se puede completar una cita médica cancelada.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        appointment.status = 'COMPLETED'
+        appointment.save(update_fields=['status', 'updated_at'])
+
+        return Response(
+            {'detail': 'Cita médica completada con éxito.', 'status': appointment.status},
+            status=status.HTTP_200_OK
+        )
+        
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @action(detail=True, methods=['patch', 'post'], url_path='reschedule')
+    def reschedule_appointment(self, request, pk=None):
+        with transaction.atomic():
+            appointment = Appointment.objects.select_for_update().get(pk=pk)
+            
+            if appointment.status == 'CANCELLED':
+                return Response(
+                    {'detail': 'No se puede reprogramar una cita cancelada.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            new_scheduled_at = request.data.get('scheduled_at')
+            new_duration = request.data.get('duration_minutes', appointment.duration_minutes)
+
+            if not new_scheduled_at:
+                return Response(
+                    {'scheduled_at': 'Debe proporcionar la nueva fecha y hora.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            serializer = self.get_serializer(
+                appointment,
+                data={'scheduled_at': new_scheduled_at, 'duration_minutes': new_duration},
+                partial=True
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            return Response(serializer.data, status=status.HTTP_200_OK)
