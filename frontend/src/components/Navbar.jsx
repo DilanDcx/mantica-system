@@ -4,6 +4,7 @@ import {
   Home, 
   FolderOpen, 
   Users, 
+  Calendar,
   UserCheck, 
   Activity, 
   LogOut, 
@@ -41,6 +42,7 @@ export default function Navbar() {
     { label: 'Inicio', path: '/home', icon: Home },
     { label: 'Expedientes', path: '/medical-records', icon: FolderOpen },
     { label: 'Pacientes', path: '/patients', icon: Users },
+    { label: 'Citas', path: '/appointments', icon: Calendar },
   ];
 
   if (hasOrganizationAccess) {
