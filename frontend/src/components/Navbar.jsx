@@ -72,7 +72,7 @@ export default function Navbar() {
           </div>
           <div>
             <h1 className="text-base font-black tracking-tight leading-tight">
-              Centro de Salud Mántica Berio
+              Centro de Salud Pedro Arauz Palacios
             </h1>
             <p className={`text-[11px] font-medium ${isDark ? 'text-slate-400' : 'text-teal-100'}`}>
               Sistema de Gestión Médica Integral

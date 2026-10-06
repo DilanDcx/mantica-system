@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   X, User, Calendar, Activity, Phone, MapPin, Heart, 
   Thermometer, PlusCircle, CheckCircle2, ShieldAlert, AlertTriangle, 
-  Edit3, Save, History, UploadCloud, FileText, Trash2, ExternalLink
+  Edit3, Save, History, UploadCloud, FileText, Trash2, ExternalLink, Download
 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { useTheme } from '../context/ThemeContext';
@@ -27,6 +27,7 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
   // Estados para archivos adjuntos y Drag & Drop (HU-11)
   const [selectedFiles, setSelectedFiles] = useState([]); // Array de { file, title }
   const [isDragging, setIsDragging] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const [formData, setFormData] = useState({
     reason: '',
@@ -56,6 +57,42 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
       setSelectedFiles([]);
     }
   }, [record]);
+
+  const downloadBlob = (data, filename) => {
+    const url = window.URL.createObjectURL(new Blob([data], { type: 'application/pdf' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadPdf = async () => {
+    setDownloadingPdf(true);
+    try {
+      const res = await axiosClient.get(`/medical-records/${currentRecord.id}/pdf/`, {
+        responseType: 'blob',
+      });
+      downloadBlob(res.data, `expediente_${currentRecord.record_number}.pdf`);
+    } catch (err) {
+      console.error(err);
+      alert('No se pudo generar el PDF del expediente.');
+    } finally {
+      setDownloadingPdf(false);
+    }
+  };
+
+  const handleDownloadReceta = async (consultationId) => {
+    try {
+      const res = await axiosClient.get(`/consultations/${consultationId}/receta-pdf/`, {
+        responseType: 'blob',
+      });
+      downloadBlob(res.data, `receta_${currentRecord.record_number}_${consultationId}.pdf`);
+    } catch (err) {
+      console.error(err);
+      alert('No se pudo generar la receta en PDF.');
+    }
+  };
 
   if (!isOpen || !currentRecord) return null;
 
@@ -93,7 +130,6 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
     }
   };
 
-  // Manejo de Drag & Drop y validación de tipos de archivo (TSK-HU11.2 y TSK-HU11.3)
   const addValidFiles = (files) => {
     const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf'];
     const valid = files.filter(f => allowed.includes(f.type));
@@ -145,11 +181,9 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
         notes: formData.notes,
       };
 
-      // 1. Crear la atención médica
       const consultationRes = await axiosClient.post('/consultations/', payload);
       const consultationId = consultationRes.data.id;
 
-      // 2. Subir los archivos adjuntos si existen (TSK-HU11.1)
       if (selectedFiles.length > 0) {
         for (const item of selectedFiles) {
           const data = new FormData();
@@ -162,11 +196,9 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
         }
       }
 
-      // 3. Recargar expediente completo con las nuevas atenciones y archivos
       const res = await axiosClient.get(`/medical-records/${currentRecord.id}/`);
       setCurrentRecord(res.data);
 
-      // Limpieza de formulario y archivos
       setFormData({
         reason: '',
         symptoms: '',
@@ -232,12 +264,22 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
             </div>
           </div>
 
-          <button 
-            onClick={onClose} 
-            className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadPdf}
+              disabled={downloadingPdf}
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer transition-colors disabled:opacity-50"
+              title="Descargar expediente en PDF"
+            >
+              <Download className="w-5 h-5" />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl bg-white/10 hover:bg-white/20 text-white cursor-pointer transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Alerta Clínica Fija */}
@@ -569,7 +611,7 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
             </div>
           )}
 
-          {/* TAB 2: HISTORIAL DE VISITAS - TIMELINE CON DOCUMENTOS ADJUNTOS (HU-10 y HU-11) */}
+          {/* TAB 2: HISTORIAL DE VISITAS */}
           {activeTab === 'history' && (
             <div className="py-2">
               {consultations.length === 0 ? (
@@ -586,14 +628,12 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
 
                     return (
                       <div key={c.id} className="relative group">
-                        {/* Nodo temporal de la línea de tiempo */}
                         <div className={`absolute -left-[31px] top-1.5 w-3.5 h-3.5 rounded-full border-2 transition-all ${
                           isLatest 
                             ? 'bg-teal-500 border-white ring-4 ring-teal-400/20' 
                             : isDark ? 'bg-slate-800 border-slate-600' : 'bg-slate-300 border-white'
                         }`} />
 
-                        {/* Tarjeta de Atención */}
                         <div className={`p-4 rounded-2xl border transition-all ${
                           isDark 
                             ? 'bg-[#1E293B]/60 border-slate-800 hover:border-slate-700' 
@@ -618,7 +658,6 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
                             </span>
                           </div>
 
-                          {/* Signos Vitales */}
                           {(c.blood_pressure || c.temperature_c || c.heart_rate_bpm || c.respiratory_rate || c.oxygen_saturation || c.weight_kg) && (
                             <div className="flex flex-wrap gap-1.5 pt-3">
                               {c.blood_pressure && (
@@ -666,7 +705,6 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
                             </div>
                           )}
 
-                          {/* Motivo y Diagnóstico */}
                           <div className="mt-3 space-y-1.5 text-xs">
                             <div>
                               <span className="font-bold text-slate-400">Motivo: </span>
@@ -688,14 +726,22 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
 
                             {c.treatment_plan && (
                               <div className="pt-1">
-                                <span className="font-bold text-slate-400 block text-[11px]">Plan de Tratamiento / Receta:</span>
+                                <div className="flex items-center justify-between">
+                                  <span className="font-bold text-slate-400 block text-[11px]">Plan de Tratamiento / Receta:</span>
+                                  <button
+                                    onClick={() => handleDownloadReceta(c.id)}
+                                    className="flex items-center gap-1 text-[10px] font-bold text-teal-500 hover:text-teal-400 cursor-pointer"
+                                    title="Descargar receta en PDF"
+                                  >
+                                    <FileText className="w-3.5 h-3.5" /> Imprimir receta
+                                  </button>
+                                </div>
                                 <p className={`text-xs whitespace-pre-line mt-0.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
                                   {c.treatment_plan}
                                 </p>
                               </div>
                             )}
 
-                            {/* TSK-HU11.2: VISUALIZACIÓN DE ARCHIVOS ADJUNTOS EN LA CONSULTA */}
                             {c.attachments && c.attachments.length > 0 && (
                               <div className="pt-3 border-t border-slate-700/20">
                                 <span className="text-[11px] font-bold text-slate-400 flex items-center gap-1 mb-2">
@@ -735,7 +781,7 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
             </div>
           )}
 
-          {/* TAB 3: REGISTRAR CONSULTA + ADJUNTAR ARCHIVOS (HU-11) */}
+          {/* TAB 3: REGISTRAR CONSULTA */}
           {activeTab === 'new_consultation' && (
             <form onSubmit={handleCreateConsultation} className="space-y-4">
               {error && (
@@ -747,7 +793,6 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
                 </div>
               )}
 
-              {/* Constantes Vitales */}
               <div>
                 <h4 className={`text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5 ${
                   isDark ? 'text-teal-400' : 'text-[#20C4BA]'
@@ -821,7 +866,6 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
                 </div>
               </div>
 
-              {/* Motivo y Diagnóstico */}
               <div className="space-y-3">
                 <div className="flex flex-col gap-1">
                   <label className={`text-xs font-semibold ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
@@ -880,7 +924,6 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
                 </div>
               </div>
 
-              {/* TSK-HU11.2: ZONA DRAG & DROP PARA SUBIDA DE ESTUDIOS */}
               <div className="pt-2">
                 <label className={`block text-xs font-semibold mb-1.5 ${isDark ? 'text-slate-300' : 'text-slate-700'}`}>
                   Estudios o Documentos Adjuntos (PDF, PNG, JPG)
@@ -915,7 +958,6 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
                   </label>
                 </div>
 
-                {/* Lista de archivos en cola para subida */}
                 {selectedFiles.length > 0 && (
                   <div className="mt-3 space-y-2">
                     <span className="text-[11px] font-bold text-slate-400">Archivos seleccionados:</span>
@@ -947,7 +989,6 @@ export default function MedicalRecordModal({ isOpen, onClose, record, onConsulta
                 )}
               </div>
 
-              {/* Botonera de Envío */}
               <div className={`pt-3 flex justify-end gap-2 border-t ${
                 isDark ? 'border-slate-800' : 'border-slate-100'
               }`}>
