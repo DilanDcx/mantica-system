@@ -131,7 +131,7 @@ export default function Login() {
         <h2 className={`text-xl sm:text-2xl font-bold mt-1 text-center ${
           isDark ? 'text-teal-400' : 'text-[#20C4BA]'
         }`}>
-          Mántica Berio
+          Pedro Arauz Palacios
         </h2>
         <p className="text-sm font-medium text-slate-400 mt-2 mb-8 text-center">
           Sistema de Gestión Médica

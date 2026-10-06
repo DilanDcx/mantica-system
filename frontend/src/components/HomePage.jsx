@@ -58,7 +58,7 @@ export default function HomePage() {
             <Activity className="w-4 h-4" /> Portal Principal
           </div>
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-            Bienvenido al Centro de Salud Mántica Berio
+            Bienvenido al Centro de Salud Pedro Arauz Palacios
           </h2>
           <p className={`text-xs sm:text-sm font-normal leading-relaxed ${
             isDark ? 'text-slate-300' : 'text-teal-50'
