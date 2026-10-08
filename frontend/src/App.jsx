@@ -7,6 +7,7 @@ import MedicalRecordsPage from './components/MedicalRecordsPage';
 import HomePage from './components/HomePage';
 import Navbar from './components/Navbar';
 import AuditLogsPage from './components/AuditLogsPage';
+import InstitutionalSettingsPage from './components/InstitutionalSettingsPage';
 
 function AppLayout({ children }) {
   return (
@@ -112,6 +113,15 @@ function App() {
           element={
             <StrictInternalRoute adminOnly={true}>
               <AppLayout><AuditLogsPage /></AppLayout>
+            </StrictInternalRoute>
+          }
+        />
+
+        <Route
+          path="/institutional-settings"
+          element={
+            <StrictInternalRoute adminOnly={true}>
+              <AppLayout><InstitutionalSettingsPage /></AppLayout>
             </StrictInternalRoute>
           }
         />
