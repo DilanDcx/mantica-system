@@ -10,8 +10,11 @@ from .models import Patient, MedicalRecord, Consultation
 from .serializers import (
     PatientSerializer,
     MedicalRecordDetailSerializer,
-    ConsultationSerializer
+    ConsultationSerializer,
+    ClinicalAuditLogSerializer,
 )
+from users.permissions import IsAdminUserRole
+from .models import ClinicalAuditLog
 
 
 User = get_user_model()
@@ -73,3 +76,12 @@ class ConsultationViewSet(viewsets.ModelViewSet):
         # Asignar automáticamente el médico autenticado si está disponible
         user = self.request.user if self.request.user.is_authenticated else None
         serializer.save(doctor=user)
+
+class ClinicalAuditLogViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = ClinicalAuditLog.objects.all()
+    serializer_class = ClinicalAuditLogSerializer
+    permission_classes = [IsAdminUserRole]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['record_number', 'performed_by', 'action']
+    ordering_fields = ['timestamp', 'record_number', 'action']
+    ordering = ['-timestamp']

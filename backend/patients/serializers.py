@@ -57,3 +57,9 @@ class PatientSerializer(serializers.ModelSerializer):
                 'opened_at': obj.medical_record.opened_at,
             }
         return None
+
+class ClinicalAuditLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ClinicalAuditLog
+        fields = ['id', 'record_number', 'action', 'performed_by', 'timestamp', 'details']
+        read_only_fields = fields

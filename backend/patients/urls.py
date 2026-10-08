@@ -4,13 +4,15 @@ from .views import (
     PatientViewSet, 
     MedicalRecordViewSet, 
     ConsultationViewSet, 
-    HomeDashboardStatsView  # <-- Agregado aquí
+    HomeDashboardStatsView,
+    ClinicalAuditLogViewSet,
 )
 
 router = DefaultRouter()
 router.register(r'patients', PatientViewSet, basename='patient')
 router.register(r'medical-records', MedicalRecordViewSet, basename='medical-record')
 router.register(r'consultations', ConsultationViewSet, basename='consultation')
+router.register(r'audit-logs', ClinicalAuditLogViewSet, basename='clinical-audit-log')
 
 urlpatterns = [
     path('dashboard-stats/', HomeDashboardStatsView.as_view(), name='home-dashboard-stats'),
