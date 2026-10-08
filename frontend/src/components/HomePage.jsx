@@ -21,6 +21,7 @@ export default function HomePage() {
     pending_appointments: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [institution, setInstitution] = useState(null);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -34,6 +35,15 @@ export default function HomePage() {
       }
     };
     fetchStats();
+  }, []);
+
+  useEffect(() => {
+    axiosClient
+      .get('/institutional-config/')
+      .then((response) => setInstitution(response.data))
+      .catch((error) => {
+        console.error('Error al cargar la configuración institucional:', error);
+      });
   }, []);
 
   return (
@@ -58,7 +68,7 @@ export default function HomePage() {
             <Activity className="w-4 h-4" /> Portal Principal
           </div>
           <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
-            Bienvenido al Centro de Salud Pedro Arauz Palacios
+            Bienvenido a {institution?.name || 'la institución de salud'}
           </h2>
           <p className={`text-xs sm:text-sm font-normal leading-relaxed ${
             isDark ? 'text-slate-300' : 'text-teal-50'
