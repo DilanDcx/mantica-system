@@ -16,6 +16,9 @@ from .serializers import (
 from users.permissions import IsAdminUserRole
 from .models import ClinicalAuditLog
 
+from django.utils.dateparse import parse_date
+from rest_framework.exceptions import ValidationError
+
 
 User = get_user_model()
 
@@ -94,3 +97,44 @@ class ClinicalAuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['record_number', 'performed_by', 'action']
     ordering_fields = ['timestamp', 'record_number', 'action']
     ordering = ['-timestamp']
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        params = self.request.query_params
+
+        fecha_desde_texto = params.get('fecha_desde')
+        fecha_hasta_texto = params.get('fecha_hasta')
+        usuario = params.get('usuario')
+        modulo = params.get('modulo')
+
+        fecha_desde = parse_date(fecha_desde_texto) if fecha_desde_texto else None
+        fecha_hasta = parse_date(fecha_hasta_texto) if fecha_hasta_texto else None
+
+        if fecha_desde_texto and fecha_desde is None:
+            raise ValidationError({
+                'fecha_desde': 'Usa el formato AAAA-MM-DD.'
+            })
+
+        if fecha_hasta_texto and fecha_hasta is None:
+            raise ValidationError({
+                'fecha_hasta': 'Usa el formato AAAA-MM-DD.'
+            })
+
+        if fecha_desde and fecha_hasta and fecha_hasta < fecha_desde:
+            raise ValidationError({
+                'fecha_hasta': 'Debe ser igual o posterior a fecha_desde.'
+            })
+
+        if fecha_desde:
+            queryset = queryset.filter(timestamp__date__gte=fecha_desde)
+
+        if fecha_hasta:
+            queryset = queryset.filter(timestamp__date__lte=fecha_hasta)
+
+        if usuario:
+            queryset = queryset.filter(performed_by__icontains=usuario.strip())
+
+        if modulo and modulo.strip().lower() != 'consultas':
+            return queryset.none()
+
+        return queryset

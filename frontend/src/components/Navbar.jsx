@@ -7,7 +7,8 @@ import {
   UserCheck, 
   Activity, 
   LogOut, 
-  ChevronDown 
+  ClipboardList,
+  ChevronDown,
 } from 'lucide-react';
 
 export default function Navbar() {
@@ -34,6 +35,7 @@ export default function Navbar() {
 
   if (isAdmin) {
     navItems.push({ label: 'Organización', path: '/users', icon: UserCheck });
+    navItems.push({ label: 'Auditoría', path: '/audit-logs', icon: ClipboardList });
   }
 
   return (

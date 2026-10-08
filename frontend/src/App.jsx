@@ -6,6 +6,7 @@ import PatientsPage from './components/PatientsPage';
 import MedicalRecordsPage from './components/MedicalRecordsPage';
 import HomePage from './components/HomePage';
 import Navbar from './components/Navbar';
+import AuditLogsPage from './components/AuditLogsPage';
 
 function AppLayout({ children }) {
   return (
@@ -104,6 +105,15 @@ function App() {
               <AppLayout><UsersPage /></AppLayout>
             </StrictInternalRoute>
           } 
+        />
+
+        <Route
+          path="/audit-logs"
+          element={
+            <StrictInternalRoute adminOnly={true}>
+              <AppLayout><AuditLogsPage /></AppLayout>
+            </StrictInternalRoute>
+          }
         />
 
         <Route path="*" element={<Navigate to="/home" replace />} />

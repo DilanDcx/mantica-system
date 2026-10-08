@@ -1,6 +1,10 @@
 from types import SimpleNamespace
-from unittest.mock import patch
+from datetime import date
+from unittest.mock import Mock, call, patch
 
+from rest_framework.exceptions import ValidationError
+from rest_framework.request import Request
+from rest_framework.test import APIRequestFactory
 from django.db.models.signals import post_save, pre_delete
 from django.db.models.deletion import ProtectedError
 from django.test import SimpleTestCase
@@ -116,3 +120,57 @@ class ClinicalAuditLogTests(SimpleTestCase):
         self.assertTrue(permission.has_permission(admin_request, None))
         self.assertFalse(permission.has_permission(doctor_request, None))
         self.assertIn(IsAdminUserRole, ClinicalAuditLogViewSet.permission_classes)
+
+    def test_audit_log_filters_by_date_and_user(self):
+        queryset = Mock()
+        queryset.filter.return_value = queryset
+
+        view = ClinicalAuditLogViewSet()
+        view.queryset = queryset
+        request = APIRequestFactory().get(
+            '/api/audit-logs/',
+            {
+                'fecha_desde': '2026-10-01',
+                'fecha_hasta': '2026-10-08',
+                'usuario': 'admin-test',
+                'modulo': 'consultas',
+            },
+        )
+        view.request = Request(request)
+
+        view.get_queryset()
+
+        self.assertEqual(
+            queryset.filter.call_args_list,
+            [
+                call(timestamp__date__gte=date(2026, 10, 1)),
+                call(timestamp__date__lte=date(2026, 10, 8)),
+                call(performed_by__icontains='admin-test'),
+            ],
+        )
+
+    def test_audit_log_rejects_invalid_date(self):
+        view = ClinicalAuditLogViewSet()
+        view.queryset = Mock()
+        request = APIRequestFactory().get(
+            '/api/audit-logs/',
+            {'fecha_desde': 'ayer'},
+        )
+        view.request = Request(request)
+
+        with self.assertRaises(ValidationError):
+            view.get_queryset()
+
+    def test_unknown_audit_module_returns_no_results(self):
+        queryset = Mock()
+        view = ClinicalAuditLogViewSet()
+        view.queryset = queryset
+        request = APIRequestFactory().get(
+            '/api/audit-logs/',
+            {'modulo': 'usuarios'},
+        )
+        view.request = Request(request)
+
+        view.get_queryset()
+
+        queryset.none.assert_called_once_with()
