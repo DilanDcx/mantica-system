@@ -131,43 +131,45 @@ export default function AuditLogsPage() {
 
   return (
     <main className="max-w-7xl mx-auto space-y-6 p-6">
-      <section className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-        <h1 className="flex items-center gap-2 text-xl font-bold text-[#0F3E48]">
-          <ClipboardList className="h-6 w-6 text-[#20C4BA]" />
+      {/* Encabezado */}
+      <section className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <h1 className="flex items-center gap-2 text-xl font-bold text-[#0F3E48] dark:text-slate-100">
+          <ClipboardList className="h-6 w-6 text-[#20C4BA] dark:text-[#2DD4BF]" />
           Bitácora de auditoría
         </h1>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
           Consulta los cambios y las bajas lógicas registrados en las consultas clínicas.
         </p>
       </section>
 
+      {/* Formulario de Filtros */}
       <form
         onSubmit={aplicarFiltros}
-        className="grid grid-cols-1 items-end gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-5"
+        className="grid grid-cols-1 items-end gap-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-5 dark:border-slate-800 dark:bg-slate-900"
       >
-        <label className="text-xs font-semibold text-slate-600">
+        <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
           Desde
           <input
             type="date"
             name="fecha_desde"
             value={filtros.fecha_desde}
             onChange={cambiarFiltro}
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA]"
+            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-[#2DD4BF]"
           />
         </label>
 
-        <label className="text-xs font-semibold text-slate-600">
+        <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
           Hasta
           <input
             type="date"
             name="fecha_hasta"
             value={filtros.fecha_hasta}
             onChange={cambiarFiltro}
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA]"
+            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-[#2DD4BF]"
           />
         </label>
 
-        <label className="text-xs font-semibold text-slate-600">
+        <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
           Usuario
           <input
             type="text"
@@ -175,17 +177,17 @@ export default function AuditLogsPage() {
             value={filtros.usuario}
             onChange={cambiarFiltro}
             placeholder="Nombre de usuario"
-            className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA]"
+            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#20C4BA] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:placeholder-slate-500 dark:focus:ring-[#2DD4BF]"
           />
         </label>
 
-        <label className="text-xs font-semibold text-slate-600">
+        <label className="text-xs font-semibold text-slate-600 dark:text-slate-300">
           Módulo
           <select
             name="modulo"
             value={filtros.modulo}
             onChange={cambiarFiltro}
-            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA]"
+            className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA] dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-[#2DD4BF]"
           >
             <option value="">Todos</option>
             <option value="consultas">Consultas</option>
@@ -196,7 +198,7 @@ export default function AuditLogsPage() {
           <button
             type="submit"
             disabled={cargando}
-            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#20C4BA] px-3 py-2 text-xs font-bold text-white hover:bg-[#1bb0a7] disabled:opacity-60"
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#20C4BA] px-3 py-2 text-xs font-bold text-white hover:bg-[#1bb0a7] disabled:opacity-60 dark:bg-[#0D9488] dark:hover:bg-[#0F766E]"
           >
             <Search className="h-4 w-4" />
             Filtrar
@@ -205,25 +207,27 @@ export default function AuditLogsPage() {
             type="button"
             onClick={limpiarFiltros}
             disabled={cargando}
-            className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
           >
             Limpiar
           </button>
         </div>
       </form>
 
+      {/* Alerta de Error */}
       {error && (
-        <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-700">
+        <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
+      {/* Tabla de Resultados */}
+      <section className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+              <tr className="border-b border-slate-100 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-500 dark:border-slate-800 dark:bg-slate-800/60 dark:text-slate-400">
                 <th className="px-5 py-3">Fecha y hora</th>
                 <th className="px-5 py-3">Usuario</th>
                 <th className="px-5 py-3">Módulo</th>
@@ -232,49 +236,51 @@ export default function AuditLogsPage() {
                 <th className="px-5 py-3">Cambios registrados</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+            <tbody className="divide-y divide-slate-100 text-xs text-slate-700 dark:divide-slate-800 dark:text-slate-300">
               {cargando ? (
                 <tr>
-                  <td colSpan="6" className="py-10 text-center text-slate-400">
-                    <RefreshCw className="mx-auto mb-2 h-5 w-5 animate-spin text-[#20C4BA]" />
+                  <td colSpan="6" className="py-10 text-center text-slate-400 dark:text-slate-500">
+                    <RefreshCw className="mx-auto mb-2 h-5 w-5 animate-spin text-[#20C4BA] dark:text-[#2DD4BF]" />
                     Cargando bitácora...
                   </td>
                 </tr>
               ) : registros.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="py-10 text-center text-slate-400">
+                  <td colSpan="6" className="py-10 text-center text-slate-400 dark:text-slate-500">
                     No se encontraron registros de auditoría.
                   </td>
                 </tr>
               ) : (
                 registros.map((registro) => (
-                  <tr key={registro.id} className="align-top hover:bg-slate-50/60">
+                  <tr key={registro.id} className="align-top hover:bg-slate-50/60 dark:hover:bg-slate-800/50">
                     <td className="whitespace-nowrap px-5 py-4">
                       {new Date(registro.timestamp).toLocaleString('es-NI')}
                     </td>
-                    <td className="px-5 py-4 font-semibold">
+                    <td className="px-5 py-4 font-semibold text-slate-900 dark:text-slate-100">
                       {registro.performed_by}
                     </td>
                     <td className="px-5 py-4">Consultas</td>
                     <td className="px-5 py-4">
                       {mostrarAccion(registro.action)}
                     </td>
-                    <td className="px-5 py-4">{registro.record_number}</td>
+                    <td className="px-5 py-4 font-medium">{registro.record_number}</td>
                     <td className="min-w-64 px-5 py-4">
                       <details>
-                        <summary className="cursor-pointer font-semibold text-[#14958D]">
+                        <summary className="cursor-pointer font-semibold text-[#14958D] hover:underline dark:text-[#2DD4BF]">
                           Ver detalles
                         </summary>
-                        <ul className="mt-2 space-y-2">
+                        <ul className="mt-2 space-y-2 rounded-lg bg-slate-50 p-2.5 dark:bg-slate-800/80">
                           {Object.entries(registro.details || {}).map(
                             ([campo, valores]) => (
-                              <li key={campo} className="break-words">
-                                <span className="font-semibold">
+                              <li key={campo} className="break-words text-slate-600 dark:text-slate-300">
+                                <span className="font-semibold text-slate-800 dark:text-slate-100">
                                   {mostrarCampo(campo)}:
                                 </span>{' '}
                                 {mostrarValor(valores?.old, campo)}
                                 {' → '}
-                                {mostrarValor(valores?.new, campo)}
+                                <span className="font-medium text-emerald-600 dark:text-emerald-400">
+                                  {mostrarValor(valores?.new, campo)}
+                                </span>
                               </li>
                             )
                           )}

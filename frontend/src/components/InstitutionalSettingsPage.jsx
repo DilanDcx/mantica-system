@@ -126,7 +126,7 @@ export default function InstitutionalSettingsPage() {
   const campoTexto = ({ name, label, maxLength }) => (
     <label
       key={name}
-      className="block text-xs font-semibold text-slate-600"
+      className="block text-xs font-semibold text-slate-600 dark:text-slate-300"
     >
       {label}
       <input
@@ -136,47 +136,50 @@ export default function InstitutionalSettingsPage() {
         onChange={cambiarDato}
         maxLength={maxLength}
         disabled={cargando || guardando}
-        className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA] disabled:bg-slate-50"
+        className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA] disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-[#2DD4BF] dark:disabled:bg-slate-800/50"
       />
     </label>
   );
 
   return (
     <main className="mx-auto max-w-4xl space-y-6 p-6">
-      <section className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
-        <h1 className="flex items-center gap-2 text-xl font-bold text-[#0F3E48]">
-          <Building2 className="h-6 w-6 text-[#20C4BA]" />
+      {/* Encabezado */}
+      <section className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <h1 className="flex items-center gap-2 text-xl font-bold text-[#0F3E48] dark:text-slate-100">
+          <Building2 className="h-6 w-6 text-[#20C4BA] dark:text-[#2DD4BF]" />
           Configuración institucional
         </h1>
-        <p className="mt-1 text-xs text-slate-500">
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
           Actualiza los datos institucionales y la información que aparece en el
           panel principal.
         </p>
       </section>
 
+      {/* Errores y Mensajes */}
       {error && (
-        <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-700">
+        <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-4 text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-400">
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {mensaje && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-700">
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/40 dark:text-emerald-300">
           {mensaje}
         </div>
       )}
 
+      {/* Formulario */}
       <form
         onSubmit={guardarConfiguracion}
-        className="space-y-6 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm"
+        className="space-y-6 rounded-2xl border border-slate-100 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900"
       >
         <section className="space-y-4">
-          <h2 className="text-base font-bold text-[#0F3E48]">
+          <h2 className="text-base font-bold text-[#0F3E48] dark:text-slate-100">
             Identificación del centro
           </h2>
 
-          <label className="block text-xs font-semibold text-slate-600">
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300">
             Nombre del centro de salud
             <input
               type="text"
@@ -186,11 +189,11 @@ export default function InstitutionalSettingsPage() {
               required
               maxLength={200}
               disabled={cargando || guardando}
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA] disabled:bg-slate-50"
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA] disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-[#2DD4BF] dark:disabled:bg-slate-800/50"
             />
           </label>
 
-          <label className="block text-xs font-semibold text-slate-600">
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300">
             Dirección
             <textarea
               name="address"
@@ -199,11 +202,11 @@ export default function InstitutionalSettingsPage() {
               maxLength={300}
               rows={3}
               disabled={cargando || guardando}
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA] disabled:bg-slate-50"
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA] disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-[#2DD4BF] dark:disabled:bg-slate-800/50"
             />
           </label>
 
-          <label className="block text-xs font-semibold text-slate-600">
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300">
             URL del logo
             <input
               type="url"
@@ -213,13 +216,13 @@ export default function InstitutionalSettingsPage() {
               maxLength={500}
               placeholder="https://ejemplo.com/logo.png"
               disabled={cargando || guardando}
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA] disabled:bg-slate-50"
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA] disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-[#2DD4BF] dark:disabled:bg-slate-800/50"
             />
           </label>
 
           {datos.logo_url && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-              <p className="mb-3 text-xs font-semibold text-slate-600">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-800/60">
+              <p className="mb-3 text-xs font-semibold text-slate-600 dark:text-slate-300">
                 Vista previa del logo
               </p>
               <img
@@ -231,8 +234,8 @@ export default function InstitutionalSettingsPage() {
           )}
         </section>
 
-        <section className="space-y-4 border-t border-slate-100 pt-5">
-          <h2 className="text-base font-bold text-[#0F3E48]">
+        <section className="space-y-4 border-t border-slate-100 pt-5 dark:border-slate-800">
+          <h2 className="text-base font-bold text-[#0F3E48] dark:text-slate-100">
             Horarios y teléfonos
           </h2>
 
@@ -241,8 +244,8 @@ export default function InstitutionalSettingsPage() {
           </div>
         </section>
 
-        <section className="space-y-4 border-t border-slate-100 pt-5">
-          <h2 className="text-base font-bold text-[#0F3E48]">
+        <section className="space-y-4 border-t border-slate-100 pt-5 dark:border-slate-800">
+          <h2 className="text-base font-bold text-[#0F3E48] dark:text-slate-100">
             Campaña de vacunación
           </h2>
 
@@ -252,7 +255,7 @@ export default function InstitutionalSettingsPage() {
             maxLength: 200,
           })}
 
-          <label className="block text-xs font-semibold text-slate-600">
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300">
             Descripción de la campaña
             <textarea
               name="campaign_text"
@@ -260,13 +263,13 @@ export default function InstitutionalSettingsPage() {
               onChange={cambiarDato}
               rows={3}
               disabled={cargando || guardando}
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA] disabled:bg-slate-50"
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA] disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-[#2DD4BF] dark:disabled:bg-slate-800/50"
             />
           </label>
         </section>
 
-        <section className="space-y-4 border-t border-slate-100 pt-5">
-          <h2 className="text-base font-bold text-[#0F3E48]">
+        <section className="space-y-4 border-t border-slate-100 pt-5 dark:border-slate-800">
+          <h2 className="text-base font-bold text-[#0F3E48] dark:text-slate-100">
             Misión
           </h2>
 
@@ -276,7 +279,7 @@ export default function InstitutionalSettingsPage() {
             maxLength: 100,
           })}
 
-          <label className="block text-xs font-semibold text-slate-600">
+          <label className="block text-xs font-semibold text-slate-600 dark:text-slate-300">
             Texto de la misión
             <textarea
               name="mission_text"
@@ -284,13 +287,13 @@ export default function InstitutionalSettingsPage() {
               onChange={cambiarDato}
               rows={5}
               disabled={cargando || guardando}
-              className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA] disabled:bg-slate-50"
+              className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-[#20C4BA] disabled:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:focus:ring-[#2DD4BF] dark:disabled:bg-slate-800/50"
             />
           </label>
         </section>
 
-        <section className="space-y-4 border-t border-slate-100 pt-5">
-          <h2 className="text-base font-bold text-[#0F3E48]">
+        <section className="space-y-4 border-t border-slate-100 pt-5 dark:border-slate-800">
+          <h2 className="text-base font-bold text-[#0F3E48] dark:text-slate-100">
             Certificación
           </h2>
 
@@ -310,7 +313,7 @@ export default function InstitutionalSettingsPage() {
         <button
           type="submit"
           disabled={cargando || guardando}
-          className="flex items-center gap-2 rounded-xl bg-[#20C4BA] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#1bb0a7] disabled:cursor-not-allowed disabled:opacity-60"
+          className="flex items-center gap-2 rounded-xl bg-[#20C4BA] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#1bb0a7] disabled:cursor-not-allowed disabled:opacity-60 dark:bg-[#0D9488] dark:hover:bg-[#0F766E]"
         >
           <Save className="h-4 w-4" />
           {guardando ? 'Guardando...' : 'Guardar configuración'}
