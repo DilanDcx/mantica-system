@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { User, Lock, Activity, Sun, Moon, CheckCircle2 } from 'lucide-react';
 import axiosClient from '../api/axiosClient';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
+
 
 export default function Login() {
   const navigate = useNavigate();
@@ -13,6 +14,17 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successToast, setSuccessToast] = useState(null);
+
+  const [institution, setInstitution] = useState(null);
+
+  useEffect(() => {
+    axiosClient
+      .get('/institutional-config/')
+      .then((response) => setInstitution(response.data))
+      .catch((error) => {
+        console.error('Error al cargar la configuración institucional:', error);
+      });
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -126,13 +138,8 @@ export default function Login() {
         <h1 className={`text-2xl sm:text-[28px] font-bold tracking-tight text-center ${
           isDark ? 'text-slate-100' : 'text-[#0F3E48]'
         }`}>
-          Centro de Salud
+          {institution?.name || 'Institución de Salud'}
         </h1>
-        <h2 className={`text-xl sm:text-2xl font-bold mt-1 text-center ${
-          isDark ? 'text-teal-400' : 'text-[#20C4BA]'
-        }`}>
-          Pedro Arauz Palacios
-        </h2>
         <p className="text-sm font-medium text-slate-400 mt-2 mb-8 text-center">
           Sistema de Gestión Médica
         </p>

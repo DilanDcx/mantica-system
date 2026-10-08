@@ -2,8 +2,20 @@ import os
 import re
 from django.utils import timezone
 from .pdf_utils import esc, esc_multiline, GENDER_LABELS
+from institutional.models import InstitutionalConfiguration
 
-CLINIC_NAME = "Centro de Salud Pedro Arauz Palacios"
+def get_clinic_name():
+    configuration = (
+        InstitutionalConfiguration.objects
+        .filter(pk=1)
+        .only("name")
+        .first()
+    )
+
+    if configuration and configuration.name.strip():
+        return configuration.name.strip()
+
+    return "Centro de Salud"
 LOGO_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'logo.png')
 
 # ----------------------------------------------------------------------
@@ -41,7 +53,7 @@ PREAMBLE = r"""
 \fancyhf{}
 \renewcommand{\headrulewidth}{0pt}
 \fancyfoot[R]{\scriptsize\color{gris} Página \thepage}
-\fancyfoot[L]{\scriptsize\color{gris} Centro de Salud Pedro Arauz Palacios --- Expediente Clínico Oficial}
+\fancyfoot[L]{\scriptsize\color{gris} <<CLINICA>> --- Expediente Clínico Oficial}
 
 \arrayrulecolor{borde}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
@@ -130,12 +142,12 @@ EXPEDIENTE_TEX = r"""
 <<CONSULTAS>>
 
 % 4. MARCO LEGAL Y POLÍTICAS
-\cajaLegal{El presente expediente clínico constituye un documento médico-legal confidencial y de propiedad exclusiva del \textbf{Centro de Salud Pedro Arauz Palacios}. La información contenida está protegida bajo las normativas de salud pública y resguardo del secreto profesional. Queda prohibida su divulgación o alteración sin autorización explícita de la Dirección Médica.}
+\cajaLegal{El presente expediente clínico constituye un documento médico-legal confidencial y de propiedad exclusiva del \textbf{<<CLINICA>>}. La información contenida está protegida bajo las normativas de salud pública y resguardo del secreto profesional. Queda prohibida su divulgación o alteración sin autorización explícita de la Dirección Médica.}
 
 % 5. FIRMAS FORMALES
 \par\vspace{1.1cm}\noindent
 \parbox{0.46\textwidth}{\centering\color{tealdark}\rule{\linewidth}{0.8pt}\par\vspace{3pt}\footnotesize\bfseries\color{texto} Médico Tratante / Responsable\par\scriptsize\color{gris} Firma y Sello Profesional}\hfill
-\parbox{0.46\textwidth}{\centering\color{tealdark}\rule{\linewidth}{0.8pt}\par\vspace{3pt}\footnotesize\bfseries\color{texto} Dirección Médica / Archivo Clínico\par\scriptsize\color{gris} Centro de Salud Pedro Arauz Palacios}
+\parbox{0.46\textwidth}{\centering\color{tealdark}\rule{\linewidth}{0.8pt}\par\vspace{3pt}\footnotesize\bfseries\color{texto} Dirección Médica / Archivo Clínico\par\scriptsize\color{gris} <<CLINICA>>}
 
 \end{document}
 """
@@ -229,6 +241,7 @@ def doctor_name(doctor):
 # CONSTRUCTORES
 # ----------------------------------------------------------------------
 def build_expediente_tex(record, consultations):
+    nombre_institucion = esc(get_clinic_name())
     p = record.patient
     hoy = timezone.localtime(timezone.now())
     apertura = local(record.opened_at)
@@ -264,7 +277,7 @@ def build_expediente_tex(record, consultations):
     cuerpo = fill(
         EXPEDIENTE_TEX,
         LOGO=logo_tex(),
-        CLINICA=esc(CLINIC_NAME),
+        CLINICA=nombre_institucion,
         HOY=esc(hoy.strftime('%d/%m/%Y %H:%M')),
         NUM=esc(record.record_number),
         APERTURA=esc(apertura.strftime('%d/%m/%Y')),
@@ -286,9 +299,10 @@ def build_expediente_tex(record, consultations):
         NOTAS=val_ml(record.notes, 'Sin observaciones registradas.'),
         CONSULTAS=consultas_tex,
     )
-    return PREAMBLE + cuerpo
+    return fill(PREAMBLE, CLINICA=nombre_institucion) + cuerpo
 
 def build_receta_tex(consultation):
+    nombre_institucion = esc(get_clinic_name())
     record = consultation.medical_record
     p = record.patient
     fecha = local(consultation.consultation_date)
@@ -297,7 +311,7 @@ def build_receta_tex(consultation):
     cuerpo = fill(
         RECETA_TEX,
         LOGO=logo_tex(),
-        CLINICA=esc(CLINIC_NAME),
+        CLINICA=nombre_institucion,
         NUM=esc(record.record_number),
         PACIENTE=esc(f"{p.first_name} {p.last_name}".strip()),
         CEDULA=val(p.identification_card),
@@ -307,4 +321,4 @@ def build_receta_tex(consultation):
         FECHA=esc(fecha.strftime('%d / %m / %Y')),
         DOCTOR=esc(doctor_name(consultation.doctor)),
     )
-    return PREAMBLE + cuerpo
+    return fill(PREAMBLE, CLINICA=nombre_institucion) + cuerpo

@@ -123,7 +123,7 @@ export default function Navbar() {
 
           <div>
             <h1 className="text-base font-black leading-tight tracking-tight">
-              {institution?.name || 'Centro de Salud Pedro Arauz Palacios'}
+              {institution?.name || 'Centro de Salud'}
             </h1>
 
             <p
