@@ -122,6 +122,8 @@ class Consultation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    is_active = models.BooleanField(default=True, verbose_name='Activa')
+
     class Meta:
         verbose_name = 'Consulta Médica'
         verbose_name_plural = 'Consultas Médicas'

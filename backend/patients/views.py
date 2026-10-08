@@ -68,7 +68,7 @@ class MedicalRecordViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class ConsultationViewSet(viewsets.ModelViewSet):
-    queryset = Consultation.objects.all().select_related('medical_record', 'doctor')
+    queryset = Consultation.objects.filter(is_active=True).select_related('medical_record', 'doctor')
     serializer_class = ConsultationSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -77,9 +77,14 @@ class ConsultationViewSet(viewsets.ModelViewSet):
         user = self.request.user if self.request.user.is_authenticated else None
         serializer.save(doctor=user)
 
+    def perform_update(self, serializer):
+        serializer.instance._audit_actor = self.request.user
+        serializer.save()
+
     def perform_destroy(self, instance):
         instance._audit_actor = self.request.user
-        instance.delete()
+        instance.is_active = False
+        instance.save(update_fields=['is_active', 'updated_at'])
 
 class ClinicalAuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ClinicalAuditLog.objects.all()
