@@ -1,5 +1,5 @@
 import uuid
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
 from .models import Patient, MedicalRecord, Consultation, ClinicalAuditLog
 
@@ -43,5 +43,27 @@ def log_consultation_changes(sender, instance, created, **kwargs):
         record_number=instance.medical_record.record_number,
         action=action,
         performed_by=doctor_username,
+        details=details
+    )
+
+@receiver(pre_delete, sender=Consultation)
+def log_consultation_deletion(sender, instance, **kwargs):
+    actor = getattr(instance, '_audit_actor', None)
+    performed_by = actor.username if actor else 'Sistema'
+
+    details = {
+        'reason': instance.reason,
+        'diagnosis': instance.diagnosis,
+        'blood_pressure': instance.blood_pressure,
+        'weight_kg': str(instance.weight_kg) if instance.weight_kg else None,
+        'temperature_c': str(instance.temperature_c) if instance.temperature_c else None,
+        'heart_rate_bpm': instance.heart_rate_bpm,
+    }
+
+    ClinicalAuditLog.objects.create(
+        consultation=None,
+        record_number=instance.medical_record.record_number,
+        action='DELETE',
+        performed_by=performed_by,
         details=details
     )

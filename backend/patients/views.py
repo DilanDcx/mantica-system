@@ -77,6 +77,10 @@ class ConsultationViewSet(viewsets.ModelViewSet):
         user = self.request.user if self.request.user.is_authenticated else None
         serializer.save(doctor=user)
 
+    def perform_destroy(self, instance):
+        instance._audit_actor = self.request.user
+        instance.delete()
+
 class ClinicalAuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ClinicalAuditLog.objects.all()
     serializer_class = ClinicalAuditLogSerializer
