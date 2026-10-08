@@ -17,3 +17,11 @@ COPY requirements.txt /app/
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY . /app/
+# Recopilar archivos estáticos para WhiteNoise
+RUN python manage.py collectstatic --no-input
+
+# Exponer el puerto
+EXPOSE 8000
+
+# Aplicar migraciones y arrancar el servidor escuchando en el puerto asignado por Render
+CMD ["sh", "-c", "python manage.py migrate && gunicorn core.wsgi:application --bind 0.0.0.0:${PORT:-8000}"]
