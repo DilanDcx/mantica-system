@@ -186,12 +186,10 @@ export default function HomePage() {
         >
           <div>
             <h3 className={`text-sm font-bold mb-2 ${isDark ? 'text-slate-100' : 'text-slate-800'}`}>
-              Nuestra Misión
+              {institution?.mission_title || ''}
             </h3>
             <p className={`text-xs leading-relaxed ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
-              Proporcionar servicios de salud integrales, accesibles y de alta calidad a nuestra comunidad, 
-              promoviendo el bienestar físico y mental de nuestros pacientes a través de un equipo médico 
-              altamente capacitado y tecnología de vanguardia.
+              {institution?.mission_text || ''}
             </p>
           </div>
 
@@ -205,84 +203,145 @@ export default function HomePage() {
             <Award className={`w-5 h-5 ${isDark ? 'text-teal-400' : 'text-[#20C4BA]'}`} />
             <div>
               <div className={`text-xs font-bold ${isDark ? 'text-slate-200' : 'text-slate-800'}`}>
-                Certificación ISO 9001:2015
+                {institution?.certification_title || ''}
               </div>
               <div className={`text-[10px] ${isDark ? 'text-slate-400' : 'text-slate-500'}`}>
-                Calidad garantizada en atención primaria
+                {institution?.certification_text || ''}
               </div>
             </div>
           </div>
         </div>
 
         {/* Horarios de Atención */}
-        <div 
+        <div
           className={`rounded-3xl p-6 shadow-md flex flex-col justify-between space-y-4 transition-colors duration-200 ${
-            isDark 
-              ? 'bg-[#0F172A] border border-slate-800/80 text-white' 
+            isDark
+              ? 'bg-[#0F172A] border border-slate-800/80 text-white'
               : 'bg-[#20C4BA] text-white'
           }`}
         >
           <div>
             <div className="flex items-center gap-2 text-sm font-bold mb-3 text-white">
-              <Clock className={`w-4 h-4 ${isDark ? 'text-teal-400' : 'text-teal-100'}`} /> Horarios de Atención
+              <Clock className={`w-4 h-4 ${isDark ? 'text-teal-400' : 'text-teal-100'}`} />
+              {institution?.hours_title || 'Horarios de Atención'}
             </div>
 
-            <div className={`space-y-2 text-xs divide-y ${
-              isDark ? 'divide-slate-800 text-slate-200' : 'divide-white/10 text-white'
-            }`}>
-              <div className="flex justify-between pt-1 font-semibold">
-                <span className={isDark ? 'text-slate-400' : 'text-teal-100'}>Lunes - Viernes</span>
-                <span>7:00 AM - 7:00 PM</span>
-              </div>
-              <div className="flex justify-between pt-2 font-semibold">
-                <span className={isDark ? 'text-slate-400' : 'text-teal-100'}>Sábados</span>
-                <span>8:00 AM - 2:00 PM</span>
-              </div>
-              <div className="flex justify-between pt-2 font-semibold">
-                <span className={isDark ? 'text-slate-400' : 'text-teal-100'}>Emergencias</span>
-                <span className={isDark ? 'text-teal-400' : 'text-white'}>24 / 7</span>
-              </div>
+            <div
+              className={`space-y-2 text-xs divide-y ${
+                isDark ? 'divide-slate-800 text-slate-200' : 'divide-white/10 text-white'
+              }`}
+            >
+              {[
+                {
+                  label: institution?.weekday_label,
+                  value: institution?.weekday_hours,
+                },
+                {
+                  label: institution?.saturday_label,
+                  value: institution?.saturday_hours,
+                },
+                {
+                  label: institution?.emergency_label,
+                  value: institution?.emergency_hours,
+                },
+              ]
+                .filter((item) => item.label || item.value)
+                .map((item, index) => (
+                  <div
+                    key={index}
+                    className="flex justify-between gap-4 pt-2 font-semibold"
+                  >
+                    <span>{item.label}</span>
+                    <span className="text-right">{item.value}</span>
+                  </div>
+                ))}
             </div>
           </div>
 
-          <div className={`pt-2 text-[11px] space-y-1 border-t ${
-            isDark ? 'border-slate-800 text-slate-400' : 'border-white/20 text-teal-50'
-          }`}>
-            <div className="flex items-center gap-2">
-              <PhoneCall className={`w-3.5 h-3.5 ${isDark ? 'text-teal-400' : 'text-teal-100'}`} /> Línea de Emergencias: <strong className={isDark ? 'text-slate-200' : 'text-white'}>911</strong>
+          {(institution?.emergency_phone_label ||
+            institution?.emergency_phone ||
+            institution?.information_label ||
+            institution?.information_phone) && (
+            <div
+              className={`pt-2 text-[11px] space-y-1 border-t ${
+                isDark
+                  ? 'border-slate-800 text-slate-400'
+                  : 'border-white/20 text-teal-50'
+              }`}
+            >
+              {(institution?.emergency_phone_label || institution?.emergency_phone) && (
+                <div className="flex items-center gap-2">
+                  <PhoneCall
+                    className={`w-3.5 h-3.5 ${
+                      isDark ? 'text-teal-400' : 'text-teal-100'
+                    }`}
+                  />
+                  {institution?.emergency_phone_label}
+                  {institution?.emergency_phone && (
+                    <strong className={isDark ? 'text-slate-200' : 'text-white'}>
+                      {institution.emergency_phone}
+                    </strong>
+                  )}
+                </div>
+              )}
+
+              {(institution?.information_label || institution?.information_phone) && (
+                <div className="flex items-center gap-2">
+                  <PhoneCall
+                    className={`w-3.5 h-3.5 ${
+                      isDark ? 'text-teal-400' : 'text-teal-100'
+                    }`}
+                  />
+                  {institution?.information_label}
+                  {institution?.information_phone && (
+                    <strong className={isDark ? 'text-slate-200' : 'text-white'}>
+                      {institution.information_phone}
+                    </strong>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="flex items-center gap-2">
-              <PhoneCall className={`w-3.5 h-3.5 ${isDark ? 'text-teal-400' : 'text-teal-100'}`} /> Información: <strong className={isDark ? 'text-slate-200' : 'text-white'}>(505) 2345-6789</strong>
-            </div>
-          </div>
+          )}
         </div>
 
       </div>
 
       {/* Campaña Informativa */}
-      <div 
-        className={`rounded-2xl p-4 flex items-center gap-3 transition-colors duration-200 border ${
-          isDark 
-            ? 'bg-slate-900 border-slate-800 text-slate-300' 
-            : 'bg-teal-50/60 border-teal-100 text-slate-600'
-        }`}
-      >
-        <div className={`p-2 rounded-xl ${
-          isDark ? 'bg-slate-800 text-teal-400' : 'bg-[#20C4BA] text-white'
-        }`}>
-          <Syringe className="w-4 h-4" />
+      {(institution?.campaign_title || institution?.campaign_text) && (
+        <div
+          className={`rounded-2xl p-4 flex items-center gap-3 transition-colors duration-200 border ${
+            isDark
+              ? 'bg-slate-900 border-slate-800 text-slate-300'
+              : 'bg-teal-50/60 border-teal-100 text-slate-600'
+          }`}
+        >
+          <div
+            className={`p-2 rounded-xl ${
+              isDark ? 'bg-slate-800 text-teal-400' : 'bg-[#20C4BA] text-white'
+            }`}
+          >
+            <Syringe className="w-4 h-4" />
+          </div>
+
+          <div className="text-xs">
+            {institution?.campaign_title && (
+              <span
+                className={`font-bold block mb-0.5 ${
+                  isDark ? 'text-teal-400' : 'text-[#14958D]'
+                }`}
+              >
+                {institution.campaign_title}
+              </span>
+            )}
+
+            {institution?.campaign_text && (
+              <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>
+                {institution.campaign_text}
+              </span>
+            )}
+          </div>
         </div>
-        <div className="text-xs">
-          <span className={`font-bold block mb-0.5 ${
-            isDark ? 'text-teal-400' : 'text-[#14958D]'
-          }`}>
-            Campaña de Vacunación 2026
-          </span>
-          <span className={isDark ? 'text-slate-300' : 'text-slate-600'}>
-            Próxima jornada de vacunación gratuita. Incluye vacunas contra influenza, COVID-19 y hepatitis B. ¡Inscríbete en recepción!
-          </span>
-        </div>
-      </div>
+      )}
 
     </main>
   );
