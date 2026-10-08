@@ -1,17 +1,32 @@
+from datetime import date
+from django.db.models import Q
+from django.contrib.auth import get_user_model
 from rest_framework import viewsets, permissions, status, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import permissions
-from django.contrib.auth import get_user_model
-from .models import Consultation
-from .models import Patient, MedicalRecord, Consultation
+from rest_framework.parsers import MultiPartParser, FormParser
+from django.core.exceptions import ValidationError
+from django.db import transaction
+
+from .pdf_utils import esc, esc_multiline, GENDER_LABELS, compile_latex_to_response
+from .pdf_templates import build_expediente_tex, build_receta_tex
+from .models import (
+    Patient,
+    MedicalRecord,
+    Consultation,
+    ClinicalAuditLog,
+    MedicalAttachment,
+    Appointment
+)
+
 from .serializers import (
     PatientSerializer,
     MedicalRecordDetailSerializer,
     ConsultationSerializer,
     ClinicalAuditLogSerializer,
+    MedicalAttachmentSerializer,
+    AppointmentSerializer,
 )
 from users.permissions import IsAdminUserRole
 from .models import ClinicalAuditLog
@@ -22,17 +37,13 @@ from rest_framework.exceptions import ValidationError
 
 User = get_user_model()
 
+
 class HomeDashboardStatsView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self, request):
-        # 1. Total de consultas médicas registradas
         total_consultations = Consultation.objects.count()
-
-        # 2. Personal habilitado/activo en el sistema
         active_staff_count = User.objects.filter(is_active=True).count()
-
-        # 3. Citas pendientes (placeholder mientras se crea el módulo)
         pending_appointments = 0
 
         return Response({
@@ -40,54 +51,373 @@ class HomeDashboardStatsView(APIView):
             'active_staff_count': active_staff_count,
             'pending_appointments': pending_appointments,
         })
-        
-        
+
+
 class PatientViewSet(viewsets.ModelViewSet):
-    queryset = Patient.objects.all().select_related('medical_record').order_by('-created_at')
     serializer_class = PatientSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['first_name', 'last_name', 'identification_card', 'phone_number', 'medical_record__record_number']
-    ordering_fields = ['first_name', 'last_name', 'identification_card', 'created_at', 'is_active']
+    search_fields = [
+        'first_name',
+        'last_name',
+        'identification_card',
+        'phone_number',
+        'medical_record__record_number'
+    ]
+    ordering_fields = [
+        'first_name',
+        'last_name',
+        'identification_card',
+        'created_at',
+        'is_active'
+    ]
     ordering = ['-created_at']
+
+    def get_queryset(self):
+        queryset = Patient.objects.all().select_related(
+            'medical_record'
+        ).order_by('-created_at')
+
+        params = self.request.query_params
+
+        # 1. Rango de Fechas (Fecha de Registro)
+        start_date = params.get('start_date')
+        end_date = params.get('end_date')
+
+        if start_date:
+            queryset = queryset.filter(created_at__date__gte=start_date)
+
+        if end_date:
+            queryset = queryset.filter(created_at__date__lte=end_date)
+
+        # 2. Género
+        gender = params.get('gender')
+
+        if gender:
+            queryset = queryset.filter(gender=gender)
+
+        # 3. Tipo de Sangre
+        blood_type = params.get('blood_type')
+
+        if blood_type:
+            queryset = queryset.filter(blood_type=blood_type)
+
+        # 4. Rango de Edad (calculado sobre birth_date)
+        min_age = params.get('min_age')
+        max_age = params.get('max_age')
+        today = date.today()
+
+        if max_age and max_age.isdigit():
+            min_birth = today.replace(
+                year=today.year - int(max_age) - 1
+            )
+            queryset = queryset.filter(birth_date__gt=min_birth)
+
+        if min_age and min_age.isdigit():
+            max_birth = today.replace(
+                year=today.year - int(min_age)
+            )
+            queryset = queryset.filter(birth_date__lte=max_birth)
+
+        # 5. Altura (consultas médicas registradas en su expediente)
+        min_height = params.get('min_height')
+        max_height = params.get('max_height')
+
+        if min_height:
+            try:
+                queryset = queryset.filter(
+                    medical_record__consultations__height_m__gte=float(min_height)
+                ).distinct()
+            except ValueError:
+                pass
+
+        if max_height:
+            try:
+                queryset = queryset.filter(
+                    medical_record__consultations__height_m__lte=float(max_height)
+                ).distinct()
+            except ValueError:
+                pass
+
+        # 6. Peso (consultas médicas registradas en su expediente)
+        min_weight = params.get('min_weight')
+        max_weight = params.get('max_weight')
+
+        if min_weight:
+            try:
+                queryset = queryset.filter(
+                    medical_record__consultations__weight_kg__gte=float(min_weight)
+                ).distinct()
+            except ValueError:
+                pass
+
+        if max_weight:
+            try:
+                queryset = queryset.filter(
+                    medical_record__consultations__weight_kg__lte=float(max_weight)
+                ).distinct()
+            except ValueError:
+                pass
+
+        return queryset
 
     @action(detail=True, methods=['patch'], url_path='toggle-status')
     def toggle_status(self, request, pk=None):
         patient = self.get_object()
         patient.is_active = not patient.is_active
         patient.save(update_fields=['is_active'])
+
         return Response(
-            {'id': patient.id, 'is_active': patient.is_active, 'detail': 'Estado actualizado.'},
+            {
+                'id': patient.id,
+                'is_active': patient.is_active,
+                'detail': 'Estado actualizado.'
+            },
             status=status.HTTP_200_OK
         )
 
 
 class MedicalRecordViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = MedicalRecord.objects.all().select_related('patient').prefetch_related('consultations__doctor')
     serializer_class = MedicalRecordDetailSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [filters.SearchFilter]
-    search_fields = ['record_number', 'patient__first_name', 'patient__last_name', 'patient__identification_card']
+    search_fields = [
+        'record_number',
+        'patient__first_name',
+        'patient__last_name',
+        'patient__identification_card'
+    ]
+
+    def get_queryset(self):
+        queryset = MedicalRecord.objects.all().select_related(
+            'patient'
+        ).prefetch_related(
+            'consultations__doctor'
+        )
+
+        params = self.request.query_params
+
+        # 1. Filtro por Género
+        gender = params.get('gender')
+
+        if gender:
+            queryset = queryset.filter(patient__gender=gender)
+
+        # 2. Filtro por Tipo de Sangre
+        blood_type = params.get('blood_type')
+
+        if blood_type:
+            queryset = queryset.filter(patient__blood_type=blood_type)
+
+        # 3. Filtro por Rango de Fechas de Atención / Apertura
+        start_date = params.get('start_date')
+        end_date = params.get('end_date')
+
+        if start_date:
+            queryset = queryset.filter(
+                Q(consultations__consultation_date__date__gte=start_date)
+                | Q(opened_at__date__gte=start_date)
+            ).distinct()
+
+        if end_date:
+            queryset = queryset.filter(
+                Q(consultations__consultation_date__date__lte=end_date)
+                | Q(opened_at__date__lte=end_date)
+            ).distinct()
+
+        # 4. Filtro por Rango de Edad
+        min_age = params.get('min_age')
+        max_age = params.get('max_age')
+        today = date.today()
+
+        if max_age and max_age.isdigit():
+            min_birth = today.replace(
+                year=today.year - int(max_age) - 1
+            )
+            queryset = queryset.filter(
+                patient__birth_date__gt=min_birth
+            )
+
+        if min_age and min_age.isdigit():
+            max_birth = today.replace(
+                year=today.year - int(min_age)
+            )
+            queryset = queryset.filter(
+                patient__birth_date__lte=max_birth
+            )
+
+        # 5. Filtro por Altura en metros
+        min_height = params.get('min_height')
+        max_height = params.get('max_height')
+
+        if min_height:
+            queryset = queryset.filter(
+                consultations__height_m__gte=float(min_height)
+            ).distinct()
+
+        if max_height:
+            queryset = queryset.filter(
+                consultations__height_m__lte=float(max_height)
+            ).distinct()
+
+        # 6. Filtro por Peso en kg
+        min_weight = params.get('min_weight')
+        max_weight = params.get('max_weight')
+
+        if min_weight:
+            try:
+                queryset = queryset.filter(
+                    consultations__weight_kg__gte=float(min_weight)
+                ).distinct()
+            except ValueError:
+                pass
+
+        if max_weight:
+            try:
+                queryset = queryset.filter(
+                    consultations__weight_kg__lte=float(max_weight)
+                ).distinct()
+            except ValueError:
+                pass
+
+        return queryset
+
+    @action(
+        detail=True,
+        methods=['patch'],
+        url_path='update-clinical-alerts'
+    )
+    def update_clinical_alerts(self, request, pk=None):
+        """
+        TSK-HU09.2.1: Actualiza alergias y antecedentes del expediente clínico.
+        """
+        record = self.get_object()
+
+        if 'allergies' in request.data:
+            record.allergies = request.data.get('allergies')
+
+        if 'medical_background' in request.data:
+            record.medical_background = request.data.get(
+                'medical_background'
+            )
+
+        if 'family_background' in request.data:
+            record.family_background = request.data.get(
+                'family_background'
+            )
+
+        record.save(
+            update_fields=[
+                'allergies',
+                'medical_background',
+                'family_background'
+            ]
+        )
+
+        # Registrar auditoría del cambio
+        user = request.user if request.user.is_authenticated else None
+        performed_by = user.username if user else 'SISTEMA'
+
+        ClinicalAuditLog.objects.create(
+            consultation=None,
+            record_number=record.record_number,
+            action='UPDATE',
+            performed_by=performed_by,
+            details={
+                'action_detail': 'Actualización de alergias y antecedentes clínicos',
+                'allergies': record.allergies,
+                'medical_background': record.medical_background,
+                'family_background': record.family_background
+            }
+        )
+
+        serializer = self.get_serializer(record)
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+    @action(detail=True, methods=['get'], url_path='history')
+    def history(self, request, pk=None):
+        """
+        TSK-HU10.1: Retorna el historial médico cronológico completo de atenciones.
+        """
+        record = self.get_object()
+
+        consultations = record.consultations.select_related(
+            'doctor'
+        ).order_by('-consultation_date')
+
+        serializer = ConsultationSerializer(
+            consultations,
+            many=True
+        )
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+    @action(detail=True, methods=['get'], url_path='pdf')
+    def download_pdf(self, request, pk=None):
+        record = self.get_object()
+
+        consultations = record.consultations.select_related(
+            'doctor'
+        ).order_by('-consultation_date')[:5]
+
+        tex_content = build_expediente_tex(
+            record,
+            consultations
+        )
+
+        return compile_latex_to_response(
+            tex_content,
+            f"expediente_{record.record_number}.pdf"
+        )
 
 
 class ConsultationViewSet(viewsets.ModelViewSet):
-    queryset = Consultation.objects.filter(is_active=True).select_related('medical_record', 'doctor')
+    queryset = Consultation.objects.filter(is_active=True).select_related(
+        'medical_record',
+        'doctor',
+    )
     serializer_class = ConsultationSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def perform_create(self, serializer):
-        # Asignar automáticamente el médico autenticado si está disponible
-        user = self.request.user if self.request.user.is_authenticated else None
+        # Asignar automáticamente el médico autenticado si está disponible.
+        user = (
+            self.request.user
+            if self.request.user.is_authenticated
+            else None
+        )
         serializer.save(doctor=user)
 
     def perform_update(self, serializer):
+        # signals.py usa este actor para registrar quién hizo el cambio.
         serializer.instance._audit_actor = self.request.user
         serializer.save()
 
     def perform_destroy(self, instance):
+        # El borrado es lógico; signals.py registra la acción DELETE.
         instance._audit_actor = self.request.user
         instance.is_active = False
         instance.save(update_fields=['is_active', 'updated_at'])
+
+    @action(detail=True, methods=['get'], url_path='receta-pdf')
+    def receta_pdf(self, request, pk=None):
+        consultation = self.get_object()
+        tex_content = build_receta_tex(consultation)
+
+        filename = (
+            f"receta_{consultation.medical_record.record_number}_"
+            f"{consultation.id}.pdf"
+        )
+
+        return compile_latex_to_response(tex_content, filename)
+
 
 class ClinicalAuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ClinicalAuditLog.objects.all()
@@ -107,8 +437,12 @@ class ClinicalAuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         usuario = params.get('usuario')
         modulo = params.get('modulo')
 
-        fecha_desde = parse_date(fecha_desde_texto) if fecha_desde_texto else None
-        fecha_hasta = parse_date(fecha_hasta_texto) if fecha_hasta_texto else None
+        fecha_desde = (
+            parse_date(fecha_desde_texto) if fecha_desde_texto else None
+        )
+        fecha_hasta = (
+            parse_date(fecha_hasta_texto) if fecha_hasta_texto else None
+        )
 
         if fecha_desde_texto and fecha_desde is None:
             raise ValidationError({
@@ -126,15 +460,215 @@ class ClinicalAuditLogViewSet(viewsets.ReadOnlyModelViewSet):
             })
 
         if fecha_desde:
-            queryset = queryset.filter(timestamp__date__gte=fecha_desde)
+            queryset = queryset.filter(
+                timestamp__date__gte=fecha_desde
+            )
 
         if fecha_hasta:
-            queryset = queryset.filter(timestamp__date__lte=fecha_hasta)
+            queryset = queryset.filter(
+                timestamp__date__lte=fecha_hasta
+            )
 
         if usuario:
-            queryset = queryset.filter(performed_by__icontains=usuario.strip())
+            queryset = queryset.filter(
+                performed_by__icontains=usuario.strip()
+            )
 
         if modulo and modulo.strip().lower() != 'consultas':
             return queryset.none()
 
         return queryset
+
+
+class MedicalAttachmentViewSet(viewsets.ModelViewSet):
+    queryset = MedicalAttachment.objects.all().select_related(
+        'consultation__medical_record'
+    )
+    serializer_class = MedicalAttachmentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def create(self, request, *args, **kwargs):
+        file_obj = request.FILES.get('file')
+
+        if file_obj and file_obj.size > 10 * 1024 * 1024:
+            return Response(
+                {
+                    'detail': (
+                        'El archivo excede el límite máximo permitido de 10 MB.'
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        return super().create(request, *args, **kwargs)
+
+
+class AppointmentViewSet(viewsets.ModelViewSet):
+    queryset = Appointment.objects.all().select_related(
+        'patient',
+        'doctor',
+    ).order_by('scheduled_at')
+
+    serializer_class = AppointmentSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+
+        doctor_id = self.request.query_params.get('doctor')
+        date_str = self.request.query_params.get('date')
+
+        if doctor_id:
+            queryset = queryset.filter(doctor_id=doctor_id)
+
+        if date_str:
+            queryset = queryset.filter(scheduled_at__date=date_str)
+
+        return queryset
+
+    @action(detail=False, methods=['get'], url_path='doctors-list')
+    def get_doctors(self, request):
+        """Devuelve la lista de usuarios médicos para el selector del frontend."""
+        doctors = User.objects.filter(
+            role__name='DOCTOR',
+            is_active=True,
+        ).values(
+            'id',
+            'first_name',
+            'last_name',
+            'username',
+        )
+
+        return Response(
+            list(doctors),
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=['post'], url_path='cancel')
+    def cancel_appointment(self, request, pk=None):
+        """Cancela una cita y libera el bloque en la agenda."""
+        appointment = self.get_object()
+
+        if appointment.status == 'CANCELLED':
+            return Response(
+                {'detail': 'La cita médica ya se encuentra cancelada.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        appointment.status = 'CANCELLED'
+        appointment.save(update_fields=['status', 'updated_at'])
+
+        return Response(
+            {
+                'detail': (
+                    'Cita cancelada correctamente. '
+                    'El bloque horario ha sido liberado.'
+                )
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(
+        detail=True,
+        methods=['patch', 'post'],
+        url_path='reschedule',
+    )
+    def reschedule_appointment(self, request, pk=None):
+        """Modifica fecha, hora o duración validando colisiones."""
+        with transaction.atomic():
+            appointment = Appointment.objects.select_for_update().get(pk=pk)
+
+            if appointment.status == 'CANCELLED':
+                return Response(
+                    {'detail': 'No se puede reprogramar una cita cancelada.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            new_scheduled_at = request.data.get('scheduled_at')
+            new_duration = request.data.get(
+                'duration_minutes',
+                appointment.duration_minutes,
+            )
+
+            if not new_scheduled_at:
+                return Response(
+                    {'scheduled_at': 'Debe proporcionar la nueva fecha y hora.'},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            serializer = self.get_serializer(
+                appointment,
+                data={
+                    'scheduled_at': new_scheduled_at,
+                    'duration_minutes': new_duration,
+                },
+                partial=True,
+            )
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+
+            return Response(
+                serializer.data,
+                status=status.HTTP_200_OK,
+            )
+
+    @action(detail=True, methods=['post'], url_path='mark-arrived')
+    def mark_arrived(self, request, pk=None):
+        """Marca la presencia del paciente en sala de espera."""
+        appointment = self.get_object()
+
+        if appointment.status == 'CANCELLED':
+            return Response(
+                {
+                    'detail': (
+                        'No se puede registrar asistencia '
+                        'en una cita cancelada.'
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        appointment.status = 'WAITING'
+        appointment.save(update_fields=['status', 'updated_at'])
+
+        return Response(
+            {
+                'detail': (
+                    'Llegada confirmada. '
+                    'Paciente marcado en sala de espera.'
+                ),
+                'status': appointment.status,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @action(detail=True, methods=['post'], url_path='complete')
+    def complete_appointment(self, request, pk=None):
+        """Marca una cita médica como completada."""
+        appointment = self.get_object()
+
+        if appointment.status == 'CANCELLED':
+            return Response(
+                {
+                    'detail': (
+                        'No se puede completar una cita médica cancelada.'
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        appointment.status = 'COMPLETED'
+        appointment.save(update_fields=['status', 'updated_at'])
+
+        return Response(
+            {
+                'detail': 'Cita médica completada con éxito.',
+                'status': appointment.status,
+            },
+            status=status.HTTP_200_OK,
+        )
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)

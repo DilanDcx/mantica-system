@@ -4,18 +4,26 @@ import ForgotPassword from './components/ForgotPassword';
 import UsersPage from './components/UsersPage';
 import PatientsPage from './components/PatientsPage';
 import MedicalRecordsPage from './components/MedicalRecordsPage';
+import AppointmentsPage from './components/AppointmentsPage';
 import HomePage from './components/HomePage';
 import Navbar from './components/Navbar';
+
 import AuditLogsPage from './components/AuditLogsPage';
 import InstitutionalSettingsPage from './components/InstitutionalSettingsPage';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
+
 
 function AppLayout({ children }) {
+  const { isDark } = useTheme();
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
+    <div className={`min-h-screen flex flex-col transition-colors duration-200 ${
+      isDark ? 'bg-[#0B1320] text-slate-100' : 'bg-slate-50 text-slate-800'
+    }`}>
       <Navbar />
       <div className="flex-1">
         {children}
-      </div>
+      </div>  
     </div>
   );
 }
@@ -31,43 +39,46 @@ function AuthRoute({ children }) {
 
 // 🔒 GUARDIÁN ESTRICTO ANTI-URL MANUAL
 function StrictInternalRoute({ children, adminOnly = false }) {
-  const navType = useNavigationType(); // 'PUSH' o 'REPLACE' cuando se hace clic en la app, 'POP' al escribir en URL o recargar
+  const navType = useNavigationType();
   const location = useLocation();
   const token = localStorage.getItem('access_token');
   const username = (localStorage.getItem('username') || '').trim();
   const rawRole = (localStorage.getItem('user_role') || '').trim().toUpperCase();
 
-  // 1. Si no hay sesión, al login
   if (!token) {
     return <Navigate to="/login" replace />;
   }
 
-  // 2. Detección de entrada manual:
-  // Cuando escribes la URL y das Enter, o abres una nueva pestaña, React Router detecta 'POP'
-  // y performance.getEntriesByType('navigation')[0].type detecta 'navigate' o 'reload'.
-  // Cuando haces clic dentro de la app (Navbar), navType es 'PUSH' o 'REPLACE'.
   const perfNav = performance.getEntriesByType('navigation')[0];
   const isDirectUrlEntry = navType === 'POP' && (!perfNav || perfNav.type === 'navigate' || perfNav.type === 'reload');
 
-  // Si no viene con la bandera interna en el estado Y fue entrada directa:
   if (!location.state?.fromApp && isDirectUrlEntry) {
     return <Navigate to="/home" replace />;
   }
 
-  // 3. Comprobación de Administrador
   const isDoctor = rawRole === 'DOCTOR' || username.toUpperCase().startsWith('DOC');
-  const isAdmin = !isDoctor && (rawRole === 'ADMIN' || rawRole === 'ADMINISTRADOR' || username.toUpperCase().startsWith('ADM'));
+  const hasOrganizationAccess = !isDoctor && (
+    rawRole === 'ADMIN' ||
+    rawRole === 'ADMINISTRADOR' ||
+    rawRole === 'DIRECTOR' ||
+    username.toUpperCase().startsWith('ADM') ||
+    username.toUpperCase().startsWith('DIR')
+  );
 
-  if (adminOnly && !isAdmin) {
+  if (adminOnly && !hasOrganizationAccess) {
     return <Navigate to="/home" replace />;
   }
 
   return children;
 }
 
-function App() {
+function MainRoutes() {
+  const { isDark } = useTheme();
+
   return (
-    <BrowserRouter>
+    <div className={`min-h-screen transition-colors duration-200 ${
+      isDark ? 'bg-[#0B1320] text-slate-100' : 'bg-slate-50 text-slate-800'
+    }`}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -77,7 +88,7 @@ function App() {
           path="/home" 
           element={
             <AuthRoute>
-              <HomePage />
+              <AppLayout><HomePage /></AppLayout>
             </AuthRoute>
           } 
         />
@@ -96,6 +107,15 @@ function App() {
           element={
             <StrictInternalRoute>
               <AppLayout><PatientsPage /></AppLayout>
+            </StrictInternalRoute>
+          } 
+        />
+        {/* NUEVA RUTA: MÓDULO DE CITAS MÉDICAS (HU-12.1) */}
+        <Route 
+          path="/appointments" 
+          element={
+            <StrictInternalRoute>
+              <AppLayout><AppointmentsPage /></AppLayout>
             </StrictInternalRoute>
           } 
         />
@@ -128,7 +148,17 @@ function App() {
 
         <Route path="*" element={<Navigate to="/home" replace />} />
       </Routes>
-    </BrowserRouter>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <BrowserRouter>
+        <MainRoutes />
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 

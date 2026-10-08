@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
 
 from .models import User
-from .permissions import IsAdminUserRole  # Permiso RBAC para Administrador
+from .permissions import IsDirectorOrAdmin  # Permiso RBAC para Administrador
 from .serializers import (
     CustomTokenObtainPairSerializer,
     LogoutSerializer,
@@ -19,7 +19,7 @@ class UserViewSet(viewsets.ModelViewSet):
     """CRUD de usuarios exclusivo para Administradores de TI."""
     queryset = User.objects.all().order_by('-id')
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated, IsAdminUserRole]
+    permission_classes = [IsAuthenticated, IsDirectorOrAdmin]
 
 
 class CustomLoginView(TokenObtainPairView):
