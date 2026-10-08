@@ -9,9 +9,66 @@ const filtrosVacios = {
   modulo: '',
 };
 
-function mostrarValor(valor) {
+const etiquetasCampos = {
+  notes: 'Notas',
+  reason: 'Motivo',
+  symptoms: 'Síntomas',
+  diagnosis: 'Diagnóstico',
+  is_active: 'Estado',
+  weight_kg: 'Peso (kg)',
+  height_m: 'Altura (m)',
+  temperature_c: 'Temperatura (°C)',
+  blood_pressure: 'Presión arterial',
+  heart_rate_bpm: 'Frecuencia cardíaca (lpm)',
+  treatment_plan: 'Plan de tratamiento',
+  respiratory_rate: 'Frecuencia respiratoria (rpm)',
+  oxygen_saturation: 'Saturación de oxígeno (%)',
+  physical_examination: 'Examen físico',
+};
+
+const etiquetasAcciones = {
+  CREATE: 'Creación',
+  UPDATE: 'Actualización',
+  DELETE: 'Baja lógica',
+  SOFT_DELETE: 'Baja lógica',
+};
+
+function mostrarCampo(campo) {
+  if (etiquetasCampos[campo]) {
+    return etiquetasCampos[campo];
+  }
+
+  return campo
+    .replaceAll('_', ' ')
+    .replace(/^\w/, (letra) => letra.toUpperCase());
+}
+
+function mostrarAccion(accion) {
+  if (!accion) {
+    return '—';
+  }
+
+  const accionNormalizada = String(accion).toUpperCase();
+
+  return (
+    etiquetasAcciones[accionNormalizada] ||
+    String(accion)
+      .replaceAll('_', ' ')
+      .replace(/^\w/, (letra) => letra.toUpperCase())
+  );
+}
+
+function mostrarValor(valor, campo) {
   if (valor === null || valor === undefined || valor === '') {
     return '—';
+  }
+
+  if (typeof valor === 'boolean') {
+    if (campo === 'is_active') {
+      return valor ? 'Activo' : 'Inactivo';
+    }
+
+    return valor ? 'Sí' : 'No';
   }
 
   return typeof valor === 'object' ? JSON.stringify(valor) : String(valor);
@@ -44,9 +101,9 @@ export default function AuditLogsPage() {
       const errores = err.response?.data;
       setError(
         errores?.fecha_desde?.[0] ||
-        errores?.fecha_hasta?.[0] ||
-        errores?.detail ||
-        'No se pudo cargar la bitácora. Comprueba la conexión y tu acceso.'
+          errores?.fecha_hasta?.[0] ||
+          errores?.detail ||
+          'No se pudo cargar la bitácora. Comprueba la conexión y tu acceso.'
       );
     } finally {
       setCargando(false);
@@ -199,7 +256,9 @@ export default function AuditLogsPage() {
                       {registro.performed_by}
                     </td>
                     <td className="px-5 py-4">Consultas</td>
-                    <td className="px-5 py-4">{registro.action}</td>
+                    <td className="px-5 py-4">
+                      {mostrarAccion(registro.action)}
+                    </td>
                     <td className="px-5 py-4">{registro.record_number}</td>
                     <td className="min-w-64 px-5 py-4">
                       <details>
@@ -207,14 +266,18 @@ export default function AuditLogsPage() {
                           Ver detalles
                         </summary>
                         <ul className="mt-2 space-y-2">
-                          {Object.entries(registro.details || {}).map(([campo, valores]) => (
-                            <li key={campo} className="break-words">
-                              <span className="font-semibold">{campo}:</span>{' '}
-                              {mostrarValor(valores?.old)}
-                              {' → '}
-                              {mostrarValor(valores?.new)}
-                            </li>
-                          ))}
+                          {Object.entries(registro.details || {}).map(
+                            ([campo, valores]) => (
+                              <li key={campo} className="break-words">
+                                <span className="font-semibold">
+                                  {mostrarCampo(campo)}:
+                                </span>{' '}
+                                {mostrarValor(valores?.old, campo)}
+                                {' → '}
+                                {mostrarValor(valores?.new, campo)}
+                              </li>
+                            )
+                          )}
                         </ul>
                       </details>
                     </td>
